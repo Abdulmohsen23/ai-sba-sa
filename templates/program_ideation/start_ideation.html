@@ -1,0 +1,41 @@
+{% extends 'program_ideation/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block ideation_title %}{{ title }}{% endblock %}
+
+{% block ideation_content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow-sm">
+            <div class="card-body p-4" {% if idea.language == 'ar' %}dir="rtl"{% endif %}>
+                <h3 class="card-title text-center mb-4">
+                    {% if idea.language == 'ar' %}
+                    لنبدأ في صناعة البرنامج:
+                    {% else %}
+                    Let's start creating the program:
+                    {% endif %}
+                </h3>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="d-flex justify-content-center">
+                        {{ form.has_specific_idea|as_crispy_field }}
+                    </div>
+                    
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-arrow-right me-2"></i> 
+                            {% if idea.language == 'ar' %}
+                            متابعة
+                            {% else %}
+                            Continue
+                            {% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

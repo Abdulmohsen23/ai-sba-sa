@@ -22,9 +22,16 @@ from django.views.generic import RedirectView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # Redirect root URL to dashboard (will add this later)
-    path('', RedirectView.as_view(pattern_name='dashboard', permanent=False)),
-    # Will add app URLs as we create the apps
+    path('accounts/', include('accounts.urls')),  # Add this line
+    # Django auth URLs
+    path('accounts/', include('django.contrib.auth.urls')),
+    # Transcription app URLs (to be added later)
+    path('transcription/', include('transcription.urls', namespace='transcription')),
+    path('askme/', include('askme.urls', namespace='askme')),  # Add this line
+    path('program-ideation/', include('program_ideation.urls', namespace='program_ideation')),  # Add this line
+    path('translation/', include('translation.urls', namespace='translation')),
+    # Include tool registry URLs for the dashboard
+    path('', include('tool_registry.urls')),
 ]
 
 # Add debug toolbar URLs in development

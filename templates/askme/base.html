@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block extra_css %}
+<style>
+    .status-pending { color: #6c757d; } /* text-secondary */
+    .status-processing { color: #fd7e14; } /* text-warning */
+    .status-completed { color: #198754; } /* text-success */
+    .status-failed { color: #dc3545; } /* text-danger */
+    
+    .question-content {
+        white-space: pre-wrap;
+    }
+    
+    .response-content {
+        white-space: pre-wrap;
+        background-color: #f8f9fa;
+        border-radius: 0.375rem;
+        padding: 1rem;
+    }
+    
+    .model-card {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    
+    .model-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .model-card.selected {
+        border-color: var(--bs-primary);
+        background-color: rgba(var(--bs-primary-rgb), 0.05);
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    .spin {
+        animation: spin 2s linear infinite;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <h1 class="h2">{% block askme_title %}Ask Me{% endblock %}</h1>
+        <div>
+            {% block tool_actions %}
+            <a href="{% url 'askme:home' %}" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-plus-circle"></i> New
+            </a>
+            <a href="{% url 'askme:conversation_list' %}" class="btn btn-primary">
+                <i class="bi bi-chat-dots"></i> My Conversations
+            </a>
+            {% endblock %}
+        </div>
+    </div>
+    
+    {% if messages %}
+    <div class="messages mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% block askme_content %}{% endblock %}
+</div>
+{% endblock %}

@@ -1,0 +1,149 @@
+{% extends 'askme/base.html' %}
+
+{% block askme_title %}Question Details{% endblock %}
+
+{% block askme_content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Question Information</h5>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Date</dt>
+                    <dd class="col-sm-7">{{ question.created_at|date:"M d, Y h:i A" }}</dd>
+                    
+                    <dt class="col-sm-5">Model</dt>
+                    <dd class="col-sm-7">{{ question.llm_model.name }}</dd>
+                    
+                    <dt class="col-sm-5">Provider</dt>
+                    <dd class="col-sm-7">{{ question.llm_model.provider }}</dd>
+                    
+                    <dt class="col-sm-5">Status</dt>
+                    <dd class="col-sm-7">
+                        <span class="status-{{ question.status }}">
+                            <i class="bi bi-{% if question.status == 'pending' %}hourglass-top{% elif question.status == 'processing' %}gear-fill spin{% elif question.status == 'completed' %}check-circle-fill{% else %}exclamation-triangle-fill{% endif %}"></i>
+                            {{ question.get_status_display }}
+                        </span>
+                    </dd>
+                    
+                    {% if question.file %}
+                    <dt class="col-sm-5">Attached File</dt>
+                    <dd class="col-sm-7">
+                        <a href="{{ question.file.url }}" target="_blank" class="text-decoration-none">
+                            <i class="bi bi-file-earmark me-1"></i>
+                            {{ question.file.name|slice:"9:" }}
+                        </a>
+                    </dd>
+                    {% endif %}
+                    
+                    {% if question.status == 'completed' and question.response %}
+                    <dt class="col-sm-5">Processing Time</dt>
+                    <dd class="col-sm-7">{{ question.response.processing_time|floatformat:2 }} seconds</dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'askme:home' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-2"></i> Ask New Question
+                    </a>
+                    <a href="{% url 'askme:list' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-list-ul me-2"></i> View All Questions
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Your Question</h5>
+            </div>
+            <div class="card-body">
+                <div class="question-content">{{ question.content }}</div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Response</h5>
+            </div>
+            <div class="card-body">
+                {% if question.status == 'completed' and question.response %}
+                    <div class="response-content">{{ question.response.content|linebreaksbr }}</div>
+                {% elif question.status == 'processing' %}
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Processing...</span>
+                        </div>
+                        <h5>Processing Your Question</h5>
+                        <p class="text-muted">Please wait while the AI model generates a response.</p>
+                        <div class="progress mt-3">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                        </div>
+                    </div>
+                {% elif question.status == 'pending' %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-hourglass-top display-4 text-muted mb-3"></i>
+                        <h5>Waiting to Start</h5>
+                        <p class="text-muted">Your question is in the queue. Processing will begin shortly.</p>
+                    </div>
+                {% elif question.status == 'failed' %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-exclamation-triangle-fill display-4 text-danger mb-3"></i>
+                        <h5>Processing Failed</h5>
+                        <p class="text-muted">{{ question.error_message|default:"An error occurred while processing your question." }}</p>
+                        <a href="{% url 'askme:home' %}" class="btn btn-primary mt-3">
+                            <i class="bi bi-arrow-repeat me-2"></i> Try Again
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if question.status == 'processing' or question.status == 'pending' %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Get data from hidden element
+        const questionData = document.getElementById('question-data');
+        const questionId = questionData.dataset.id;
+        const initialStatus = questionData.dataset.status;
+        
+        let checkInterval;
+        
+        function checkStatus() {
+            fetch(`/askme/${questionId}/status/`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Status:', data);
+                    if (data.status !== initialStatus) {
+                        // Status changed - reload page
+                        window.location.reload();
+                    } else if (data.status === 'completed' || data.status === 'failed') {
+                        // Stop polling when process completes
+                        clearInterval(checkInterval);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+        
+        // Start polling
+        checkInterval = setInterval(checkStatus, 5000);
+        checkStatus(); // Initial check
+    });
+</script>
+{% endif %}
+{% endblock %}

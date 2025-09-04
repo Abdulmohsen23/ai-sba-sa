@@ -1,0 +1,73 @@
+{% extends 'translation/base.html' %}
+
+{% block translation_title %}My Translation Projects{% endblock %}
+{% block translation_header %}My Translation Projects{% endblock %}
+
+{% block translation_actions %}
+<a href="{% url 'translation:create' %}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> New Project
+</a>
+{% endblock %}
+
+{% block translation_content %}
+<div class="card shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col">Title</th>
+                        <th scope="col">Source Language</th>
+                        <th scope="col">Translation Mode</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Created</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for project in projects %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'translation:detail' pk=project.pk %}" class="text-decoration-none">
+                                {{ project.title }}
+                            </a>
+                        </td>
+                        <td>{{ project.get_source_language_display }}</td>
+                        <td>{{ project.get_translation_mode_display }}</td>
+                        <td>
+                            {% include 'translation/components/status_indicator.html' with status=project.status small=True %}
+                        </td>
+                        <td>{{ project.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            <div class="btn-group">
+                                <a href="{% url 'translation:detail' pk=project.pk %}" class="btn btn-sm btn-outline-secondary">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if project.status == 'completed' %}
+                                <a href="{% url 'translation:editor' pk=project.pk %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-pencil-square"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center py-4">
+                            <div class="empty-state">
+                                <i class="bi bi-film fs-1 text-muted"></i>
+                                <h5 class="mt-3">No translation projects yet</h5>
+                                <p class="text-muted mb-3">Upload a video to generate subtitles and translations.</p>
+                                <a href="{% url 'translation:create' %}" class="btn btn-primary">
+                                    <i class="bi bi-plus-lg"></i> Create Your First Project
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

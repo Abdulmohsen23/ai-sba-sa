@@ -1,0 +1,43 @@
+{% if status == 'completed' %}
+<div class="status-indicator {% if small %}small{% endif %}">
+    <span class="badge rounded-pill bg-success">
+        <i class="bi bi-check-circle-fill"></i>
+        {% if not small %}Completed{% endif %}
+    </span>
+    {% if not small %}
+    <small class="text-muted ms-2">Ready for editing</small>
+    {% endif %}
+</div>
+{% elif status == 'processing' %}
+<div class="status-indicator {% if small %}small{% endif %}">
+    <span class="badge rounded-pill bg-primary">
+        <i class="bi bi-arrow-repeat"></i>
+        {% if not small %}Processing{% endif %}
+    </span>
+    {% if not small %}
+    <div class="spinner-border spinner-border-sm text-primary ms-2" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    {% endif %}
+</div>
+{% elif status == 'pending' %}
+<div class="status-indicator {% if small %}small{% endif %}">
+    <span class="badge rounded-pill bg-warning text-dark">
+        <i class="bi bi-clock-fill"></i>
+        {% if not small %}Pending{% endif %}
+    </span>
+    {% if not small %}
+    <small class="text-muted ms-2">Waiting to process</small>
+    {% endif %}
+</div>
+{% elif status == 'failed' %}
+<div class="status-indicator {% if small %}small{% endif %}">
+    <span class="badge rounded-pill bg-danger">
+        <i class="bi bi-x-circle-fill"></i>
+        {% if not small %}Failed{% endif %}
+    </span>
+    {% if not small %}
+    <small class="text-muted ms-2">Processing error occurred</small>
+    {% endif %}
+</div>
+{% endif %}

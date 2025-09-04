@@ -1,0 +1,46 @@
+{% extends 'program_ideation/base.html' %}
+
+{% block ideation_title %}Program Ideation{% endblock %}
+
+{% block ideation_content %}
+<div class="text-center mb-5">
+    <h2>Create TV Program Ideas for Saudi Broadcasting Authority</h2>
+    <p class="lead mt-3">Use AI to develop innovative TV program concepts, formats, and scripts</p>
+</div>
+
+<div class="row row-cols-1 row-cols-md-3 g-4 justify-content-center">
+    <div class="col">
+        <div class="card h-100 shadow-sm hover-shadow text-center">
+            <div class="card-body p-4">
+                <div class="mb-4">
+                    <i class="bi bi-lightbulb display-1 text-warning"></i>
+                </div>
+                <h3 class="card-title h4">Generate Program Ideas</h3>
+                <p class="card-text">Create completely new program ideas or develop your existing concepts</p>
+                <div class="mt-4">
+                    <a href="{% url 'program_ideation:select_language' %}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle me-2"></i> Start New Idea
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col">
+        <div class="card h-100 shadow-sm hover-shadow text-center">
+            <div class="card-body p-4">
+                <div class="mb-4">
+                    <i class="bi bi-list-ul display-1 text-primary"></i>
+                </div>
+                <h3 class="card-title h4">My Program Ideas</h3>
+                <p class="card-text">View and continue working on your saved program ideas</p>
+                <div class="mt-4">
+                    <a href="{% url 'program_ideation:idea_list' %}" class="btn btn-outline-primary">
+                        <i class="bi bi-eye me-2"></i> View My Ideas
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

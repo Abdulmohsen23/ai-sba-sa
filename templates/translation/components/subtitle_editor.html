@@ -1,0 +1,48 @@
+<div class="subtitle-editor-component">
+    <div class="editor-header">
+        <div class="timestamp-display">
+            <span class="start-time">{{ subtitle.start_time_formatted }}</span>
+            <span class="separator">→</span>
+            <span class="end-time">{{ subtitle.end_time_formatted }}</span>
+        </div>
+        <div class="sequence-display">
+            Subtitle #{{ subtitle.sequence }}
+        </div>
+    </div>
+    
+    <div class="editor-body">
+        <div class="form-group mb-3">
+            <label for="original-text" class="form-label">
+                {{ project.get_source_language_display }} Text
+            </label>
+            <textarea id="original-text" class="form-control" rows="2" 
+                     data-subtitle-id="{{ subtitle.id }}" 
+                     data-field="original_text">{{ subtitle.original_text }}</textarea>
+        </div>
+        
+        {% if project.translation_mode == 'translate' %}
+        <div class="form-group mb-3">
+            <label for="translated-text" class="form-label">
+                {% if project.source_language == 'ar' %}English{% else %}Arabic{% endif %} Text
+            </label>
+            <textarea id="translated-text" class="form-control" rows="2"
+                     data-subtitle-id="{{ subtitle.id }}" 
+                     data-field="translated_text">{{ subtitle.translated_text }}</textarea>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="editor-footer">
+        <div class="editor-controls">
+            <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="prev-subtitle">
+                <i class="bi bi-arrow-left"></i> Previous
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary" id="next-subtitle">
+                Next <i class="bi bi-arrow-right"></i>
+            </button>
+        </div>
+        <button type="button" class="btn btn-sm btn-primary" id="save-subtitle-btn">
+            <i class="bi bi-save"></i> Save Changes
+        </button>
+    </div>
+</div>

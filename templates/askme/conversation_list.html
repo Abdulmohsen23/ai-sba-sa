@@ -1,0 +1,35 @@
+{% extends 'askme/base.html' %}
+
+{% block askme_title %}My Conversations{% endblock %}
+
+{% block askme_content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">All Conversations</h5>
+        <a href="{% url 'askme:home' %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus-circle me-1"></i> New Conversation
+        </a>
+    </div>
+    <div class="list-group list-group-flush">
+        {% for conversation in conversations %}
+        <a href="{% url 'askme:conversation' conversation.id %}" class="list-group-item list-group-item-action">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <h6 class="mb-0 text-truncate" style="max-width: 80%;">{{ conversation.title }}</h6>
+                <small class="text-muted">{{ conversation.updated_at|date:"M d, Y h:i A" }}</small>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">{{ conversation.questions.count }} message{% if conversation.questions.count != 1 %}s{% endif %}</small>
+                <span class="badge bg-primary">{{ conversation.llm_model.name }}</span>
+            </div>
+        </a>
+        {% empty %}
+        <div class="list-group-item text-center py-4">
+            <p class="mb-2 text-muted">You haven't started any conversations yet.</p>
+            <a href="{% url 'askme:home' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i> Start Your First Conversation
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

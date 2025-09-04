@@ -1,0 +1,838 @@
+{% extends 'program_ideation/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block ideation_title %}{{ title }}{% endblock %}
+
+{% block ideation_content %}
+<style>
+    .ideation-container {
+        display: flex;
+        gap: 20px;
+        padding: 20px;
+    }
+    
+    .ideation-form-container {
+        flex: 1;
+        min-width: 400px;
+    }
+    
+    .ideation-response-container {
+        flex: 1;
+        min-width: 400px;
+    }
+    
+    .response-area {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        height: calc(100vh - 200px);
+        overflow-y: auto;
+    }
+    
+    .field-suggestions-section {
+        margin-bottom: 25px;
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .field-suggestions-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 12px 20px;
+        font-weight: 600;
+        font-size: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .field-suggestions-header .badge {
+        background: rgba(255,255,255,0.2);
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+    }
+    
+    .suggestion-item {
+        padding: 15px 20px;
+        border-bottom: 1px solid #e9ecef;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+        min-height: 60px;
+    }
+    
+    .suggestion-item:last-child {
+        border-bottom: none;
+    }
+    
+    .suggestion-item:hover {
+        background: #f1f3f5;
+    }
+    
+    .suggestion-number {
+        display: inline-block;
+        background: #6c757d;
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 24px;
+        font-size: 12px;
+        margin-right: 10px;
+        font-weight: bold;
+    }
+    
+    .suggestion-text {
+        display: inline-block;
+        flex: 1;
+        color: #495057;
+        line-height: 1.6;
+        padding-right: 150px;
+    }
+    
+    .suggestion-actions {
+        position: absolute;
+        right: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        display: flex;
+        gap: 8px;
+    }
+    
+    .btn-apply-suggestion {
+        padding: 6px 16px;
+        font-size: 13px;
+        border-radius: 20px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-apply-primary {
+        background: #28a745;
+        color: white;
+    }
+    
+    .btn-apply-primary:hover {
+        background: #218838;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+    }
+    
+    .btn-copy-suggestion {
+        background: #6c757d;
+        color: white;
+    }
+    
+    .btn-copy-suggestion:hover {
+        background: #5a6268;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+    }
+    
+    .applied-indicator {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: #28a745;
+        color: white;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        display: none;
+    }
+    
+    .suggestion-item.applied .applied-indicator {
+        display: block;
+    }
+    
+    .suggestion-item.applied {
+        background: #d4edda;
+    }
+    
+    .loading-spinner {
+        text-align: center;
+        padding: 40px;
+    }
+    
+    .loading-spinner .spinner-border {
+        width: 3rem;
+        height: 3rem;
+        border-width: 0.3rem;
+    }
+    
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6c757d;
+    }
+    
+    .empty-state i {
+        font-size: 48px;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+    
+    .toast-notification {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #28a745;
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        display: none;
+        align-items: center;
+        gap: 10px;
+        z-index: 9999;
+        animation: slideInUp 0.3s ease;
+    }
+    
+    @keyframes slideInUp {
+        from {
+            transform: translateY(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    .field-group {
+        margin-bottom: 20px;
+    }
+    
+    .quick-fill-section {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .quick-fill-header {
+        font-weight: 600;
+        color: #856404;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .quick-fill-buttons {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    
+    .btn-quick-fill {
+        padding: 8px 16px;
+        background: #ffc107;
+        color: #212529;
+        border: none;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-quick-fill:hover {
+        background: #e0a800;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+    }
+    
+    /* RTL Support */
+    [dir="rtl"] .suggestion-number {
+        margin-right: 0;
+        margin-left: 10px;
+    }
+    
+    [dir="rtl"] .suggestion-text {
+        padding-right: 0;
+        padding-left: 150px;
+    }
+    
+    [dir="rtl"] .suggestion-actions {
+        right: auto;
+        left: 20px;
+    }
+    
+    [dir="rtl"] .applied-indicator {
+        right: auto;
+        left: 10px;
+    }
+    
+    [dir="rtl"] .toast-notification {
+        right: auto;
+        left: 20px;
+    }
+</style>
+
+<div class="ideation-container">
+    <div class="ideation-form-container">
+        <div class="card shadow-sm">
+            <div class="card-body p-4" {% if idea.language == 'ar' %}dir="rtl"{% endif %}>
+                <h3 class="card-title mb-4">
+                    {% if idea.language == 'ar' %}
+                    تفاصيل عن الفكرة
+                    {% else %}
+                    Idea Details
+                    {% endif %}
+                </h3>
+                
+                <!-- Quick Fill Section -->
+                <div class="quick-fill-section" id="quickFillSection" style="display:none;">
+                    <div class="quick-fill-header">
+                        <i class="bi bi-lightning-fill"></i>
+                        <span>
+                            {% if idea.language == 'ar' %}
+                            تعبئة سريعة من الاقتراحات
+                            {% else %}
+                            Quick Fill from Suggestions
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="quick-fill-buttons" id="quickFillButtons">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+                
+                <form method="post" id="ideaForm">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-12 field-group">
+                            {{ form.program_name|as_crispy_field }}
+                        </div>
+                        
+                        <div class="col-md-12 field-group">
+                            {{ form.general_idea|as_crispy_field }}
+                        </div>
+                        
+                        <div class="col-md-12 field-group">
+                            {{ form.target_audience|as_crispy_field }}
+                        </div>
+                        
+                        <div class="col-md-12 field-group">
+                            {{ form.program_objectives|as_crispy_field }}
+                        </div>
+                        
+                        <div class="col-md-6 field-group">
+                            {{ form.program_type|as_crispy_field }}
+                        </div>
+                        
+                        <div class="col-md-6 field-group">
+                            {{ form.program_duration|as_crispy_field }}
+                        </div>
+                        
+                        <div class="col-md-6 field-group">
+                            {{ form.episode_count|as_crispy_field }}
+                        </div>
+                        
+                        <div class="col-md-6 field-group">
+                            {{ form.filming_location|as_crispy_field }}
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-4">
+                        <button type="submit" name="continue" class="btn btn-primary">
+                            <i class="bi bi-check2-circle me-2"></i> {{ continue_button }}
+                        </button>
+                        
+                        <button type="submit" name="restart" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-counterclockwise me-2"></i> {{ restart_button }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="ideation-response-container">
+        <div class="response-area">
+            <h3 class="text-center mb-4">
+                {% if idea.language == 'ar' %}
+                <i class="bi bi-lightbulb"></i> اقتراحات البرامج
+                {% else %}
+                <i class="bi bi-lightbulb"></i> Program Suggestions
+                {% endif %}
+            </h3>
+            
+            <div id="suggestions-container">
+                {% if response %}
+                    <div id="response-content" style="display:none;">{{ response.content }}</div>
+                {% else %}
+                    <div class="loading-spinner">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-3">
+                            {% if idea.language == 'ar' %}
+                            جاري إعداد المقترحات...
+                            {% else %}
+                            Preparing suggestions...
+                            {% endif %}
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast-notification" class="toast-notification">
+    <i class="bi bi-check-circle-fill"></i>
+    <span id="toast-message"></span>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const isRTL = document.documentElement.lang === 'ar' || 
+                  document.querySelector('[dir="rtl"]') !== null;
+    
+    // Field mapping for both languages
+     // Fix the field mapping to ensure program_name is recognized
+const fieldMapping = {
+    'اسم البرنامج': 'program_name',
+    'الفكرة العامة': 'general_idea',
+    'الجمهور المستهدف': 'target_audience',
+    'أهداف البرنامج': 'program_objectives',
+    'نوع البرنامج': 'program_type',
+    'مدة البرنامج': 'program_duration',
+    'عدد الحلقات': 'episode_count',
+    'موقع أو أسلوب التصوير': 'filming_location',
+    'موقع التصوير': 'filming_location',
+    // English mappings
+    'Program Name': 'program_name',
+    'General Idea': 'general_idea',
+    'Target Audience': 'target_audience',
+    'Program Objectives': 'program_objectives',
+    'Program Type': 'program_type',
+    'Program Duration': 'program_duration',
+    'Episode Count': 'episode_count',
+    'Filming Location': 'filming_location'
+};
+    
+    // Store all suggestions for quick fill
+    let allSuggestions = {};
+    
+    // Initialize suggestions
+    initializeSuggestions();
+    
+    function initializeSuggestions() {
+        const responseContent = document.getElementById('response-content');
+        if (responseContent) {
+            const content = responseContent.textContent || responseContent.innerText;
+            if (content && content.trim()) {
+                parseSuggestions(content);
+            }
+        }
+    }
+    
+    function parseSuggestions(content) {
+        const container = document.getElementById('suggestions-container');
+        container.innerHTML = '';
+        
+        // Try structured parsing first (with ===== markers)
+        const sectionRegex = /={3,}\s*([^=]+?)\s*={3,}([\s\S]*?)(?=={3,}|$)/g;
+        let match;
+        const sections = [];
+        
+        while ((match = sectionRegex.exec(content)) !== null) {
+            const fieldName = match[1].trim();
+            const fieldContent = match[2].trim();
+            
+            if (fieldName && fieldContent) {
+                sections.push({
+                    fieldName: fieldName,
+                    content: fieldContent,
+                    fieldId: fieldMapping[fieldName] || detectFieldType(fieldName, fieldContent)
+                });
+            }
+        }
+        
+        // If no structured sections found, try unstructured parsing
+        if (sections.length === 0) {
+            parseUnstructuredContent(content, container);
+            return;
+        }
+        
+        // Create UI for each section
+        sections.forEach(section => {
+            createSuggestionSection(section, container);
+        });
+        
+        // Setup quick fill buttons if we have suggestions for multiple fields
+        if (Object.keys(allSuggestions).length > 1) {
+            setupQuickFill();
+        }
+    }
+    
+    function parseUnstructuredContent(content, container) {
+        // Try to detect suggestions from unstructured content
+        const lines = content.split('\n').filter(line => line.trim());
+        const detectedSections = {};
+        
+        lines.forEach(line => {
+            const fieldType = detectFieldFromLine(line);
+            if (!detectedSections[fieldType]) {
+                detectedSections[fieldType] = [];
+            }
+            detectedSections[fieldType].push(line);
+        });
+        
+        // Create sections for detected fields
+        Object.entries(detectedSections).forEach(([fieldId, suggestions]) => {
+            const section = {
+                fieldName: getFieldLabel(fieldId),
+                content: suggestions.join('\n'),
+                fieldId: fieldId
+            };
+            createSuggestionSection(section, container);
+        });
+    }
+    
+    function detectFieldType(fieldName, content) {
+        // Try to detect field type from field name or content
+        const nameLC = fieldName.toLowerCase();
+        const contentLC = content.toLowerCase();
+        
+        if (nameLC.includes('name') || nameLC.includes('اسم') || nameLC.includes('title')) {
+            return 'program_name';
+        }
+        if (nameLC.includes('idea') || nameLC.includes('فكرة') || contentLC.length > 200) {
+            return 'general_idea';
+        }
+        if (nameLC.includes('audience') || nameLC.includes('جمهور')) {
+            return 'target_audience';
+        }
+        if (nameLC.includes('objective') || nameLC.includes('أهداف')) {
+            return 'program_objectives';
+        }
+        if (nameLC.includes('type') || nameLC.includes('نوع')) {
+            return 'program_type';
+        }
+        if (nameLC.includes('duration') || nameLC.includes('مدة')) {
+            return 'program_duration';
+        }
+        if (nameLC.includes('episode') || nameLC.includes('حلقات')) {
+            return 'episode_count';
+        }
+        if (nameLC.includes('location') || nameLC.includes('موقع')) {
+            return 'filming_location';
+        }
+        
+        return 'program_name'; // Default
+    }
+    
+    function detectFieldFromLine(line) {
+        // Simple heuristics to detect field type from line content
+        if (line.length < 50 && !line.includes(':')) {
+            return 'program_name';
+        }
+        if (line.length > 150) {
+            return 'general_idea';
+        }
+        if (line.match(/\d+\s*(دقيقة|minutes?|mins?)/i)) {
+            return 'program_duration';
+        }
+        if (line.match(/\d+\s*(حلقة|episodes?)/i)) {
+            return 'episode_count';
+        }
+        
+        return 'program_name'; // Default
+    }
+    
+    function getFieldLabel(fieldId) {
+        const labels = {
+            'program_name': isRTL ? 'اسم البرنامج' : 'Program Name',
+            'general_idea': isRTL ? 'الفكرة العامة' : 'General Idea',
+            'target_audience': isRTL ? 'الجمهور المستهدف' : 'Target Audience',
+            'program_objectives': isRTL ? 'أهداف البرنامج' : 'Program Objectives',
+            'program_type': isRTL ? 'نوع البرنامج' : 'Program Type',
+            'program_duration': isRTL ? 'مدة البرنامج' : 'Program Duration',
+            'episode_count': isRTL ? 'عدد الحلقات' : 'Episode Count',
+            'filming_location': isRTL ? 'موقع التصوير' : 'Filming Location'
+        };
+        return labels[fieldId] || fieldId;
+    }
+    
+    function createSuggestionSection(section, container) {
+        const sectionDiv = document.createElement('div');
+        sectionDiv.className = 'field-suggestions-section';
+        sectionDiv.dataset.fieldId = section.fieldId;
+        
+        // Create header
+        const header = document.createElement('div');
+        header.className = 'field-suggestions-header';
+        header.innerHTML = `
+            <span>${section.fieldName}</span>
+            <span class="badge">${section.fieldId}</span>
+        `;
+        sectionDiv.appendChild(header);
+        
+        // Parse individual suggestions
+        const suggestions = extractSuggestions(section.content);
+        
+        // Store suggestions for quick fill
+        if (suggestions.length > 0) {
+            allSuggestions[section.fieldId] = suggestions;
+        }
+        
+        // Create suggestion items
+        suggestions.forEach((suggestion, index) => {
+            const suggestionItem = createSuggestionItem(suggestion, index + 1, section.fieldId);
+            sectionDiv.appendChild(suggestionItem);
+        });
+        
+        container.appendChild(sectionDiv);
+    }
+    
+    function extractSuggestions(content) {
+        const suggestions = [];
+        const lines = content.split('\n').filter(line => line.trim());
+        
+        // Patterns to identify suggestions
+        const patterns = [
+            /^(اقتراح|Suggestion)\s*\d+\s*:\s*(.+)/i,
+            /^\d+\.\s*(.+)/,
+            /^[-•*]\s*(.+)/,
+            /\*\*(اقتراح|Suggestion)\s*\d+\*\*\s*:\s*(.+)/i
+        ];
+        
+        let currentSuggestion = '';
+        
+        for (const line of lines) {
+            let matched = false;
+            
+            for (const pattern of patterns) {
+                const match = line.match(pattern);
+                if (match) {
+                    if (currentSuggestion) {
+                        suggestions.push(currentSuggestion.trim());
+                    }
+                    currentSuggestion = match[match.length - 1];
+                    matched = true;
+                    break;
+                }
+            }
+            
+            if (!matched) {
+                if (currentSuggestion) {
+                    currentSuggestion += ' ' + line;
+                } else if (line.trim()) {
+                    currentSuggestion = line;
+                }
+            }
+        }
+        
+        if (currentSuggestion) {
+            suggestions.push(currentSuggestion.trim());
+        }
+        
+        // If no suggestions found, treat the whole content as one suggestion
+        if (suggestions.length === 0 && content.trim()) {
+            suggestions.push(content.trim());
+        }
+        
+        return suggestions;
+    }
+    
+    function createSuggestionItem(text, number, fieldId) {
+    const div = document.createElement('div');
+    div.className = 'suggestion-item';
+    div.dataset.fieldId = fieldId;
+    div.dataset.suggestionText = text;
+    div.dataset.suggestionNumber = number;
+    
+    const content = document.createElement('div');
+    content.innerHTML = `
+        <span class="suggestion-number">${number}</span>
+        <span class="suggestion-text">${text}</span>
+    `;
+    div.appendChild(content);
+    
+    const actions = document.createElement('div');
+    actions.className = 'suggestion-actions';
+    
+    // Create apply button without inline onclick
+    const applyBtn = document.createElement('button');
+    applyBtn.type = 'button';
+    applyBtn.className = 'btn-apply-suggestion btn-apply-primary';
+    applyBtn.innerHTML = `<i class="bi bi-check2"></i> ${isRTL ? 'تطبيق' : 'Apply'}`;
+    
+    // Add event listener instead of onclick attribute
+    applyBtn.addEventListener('click', function() {
+        applySuggestion(fieldId, text, this);
+    });
+    
+    // Create copy button
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'btn-apply-suggestion btn-copy-suggestion';
+    copyBtn.innerHTML = `<i class="bi bi-clipboard"></i> ${isRTL ? 'نسخ' : 'Copy'}`;
+    
+    // Add event listener for copy
+    copyBtn.addEventListener('click', function() {
+        copySuggestion(text);
+    });
+    
+    actions.appendChild(applyBtn);
+    actions.appendChild(copyBtn);
+    div.appendChild(actions);
+    
+    const indicator = document.createElement('div');
+    indicator.className = 'applied-indicator';
+    indicator.innerHTML = '<i class="bi bi-check"></i> ' + (isRTL ? 'مطبق' : 'Applied');
+    div.appendChild(indicator);
+    
+    return div;
+}
+    
+    function setupQuickFill() {
+        const quickFillSection = document.getElementById('quickFillSection');
+        const quickFillButtons = document.getElementById('quickFillButtons');
+        
+        quickFillSection.style.display = 'block';
+        quickFillButtons.innerHTML = '';
+        
+        // Create buttons for each suggestion set
+        Object.keys(allSuggestions).forEach((fieldId, index) => {
+            if (allSuggestions[fieldId].length > 0) {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn-quick-fill';
+                button.innerHTML = `
+                    <i class="bi bi-magic"></i> 
+                    ${isRTL ? `اقتراح ${index + 1}` : `Suggestion ${index + 1}`}
+                `;
+                button.onclick = () => quickFillForm(index);
+                quickFillButtons.appendChild(button);
+            }
+        });
+    }
+    
+    function quickFillForm(suggestionIndex) {
+        Object.entries(allSuggestions).forEach(([fieldId, suggestions]) => {
+            if (suggestions[suggestionIndex]) {
+                const field = document.getElementById(`id_${fieldId}`);
+                if (field && !field.value) {
+                    field.value = suggestions[suggestionIndex];
+                    highlightField(field);
+                }
+            }
+        });
+        
+        showToast(isRTL ? 'تم ملء الحقول الفارغة!' : 'Empty fields filled!');
+    }
+    
+    function highlightField(field) {
+        field.style.transition = 'all 0.3s ease';
+        field.style.backgroundColor = '#d4edda';
+        field.style.border = '2px solid #28a745';
+        
+        setTimeout(() => {
+            field.style.backgroundColor = '';
+            field.style.border = '';
+        }, 2000);
+    }
+    
+    // Global functions
+    window.applySuggestion = function(fieldId, text, button) {
+    // For templates without AJAX (suggestions.html, missing_data.html)
+    const field = document.getElementById(`id_${fieldId}`);
+    
+    if (field) {
+        // Apply the suggestion
+        field.value = text;
+        
+        // Visual feedback
+        field.style.transition = 'all 0.3s ease';
+        field.style.backgroundColor = '#d4edda';
+        field.style.border = '2px solid #28a745';
+        
+        setTimeout(() => {
+            field.style.backgroundColor = '';
+            field.style.border = '';
+        }, 2000);
+        
+        // Mark as applied
+        const suggestionItem = button.closest('.suggestion-item');
+        if (suggestionItem) {
+            suggestionItem.classList.add('applied');
+        }
+        
+        showToast(isRTL ? 'تم تطبيق الاقتراح بنجاح!' : 'Suggestion applied successfully!');
+        
+        // Scroll to field
+        field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        field.focus();
+    } else {
+        console.error('Field not found:', `id_${fieldId}`);
+        showToast(isRTL ? 'لم يتم العثور على الحقل' : 'Field not found', 'error');
+    }
+};
+    
+    window.copySuggestion = function(text) {
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(text).then(() => {
+                showToast(isRTL ? 'تم نسخ الاقتراح!' : 'Suggestion copied!');
+            }).catch(() => {
+                fallbackCopy(text);
+            });
+        } else {
+            fallbackCopy(text);
+        }
+    };
+    
+    function fallbackCopy(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast(isRTL ? 'تم نسخ الاقتراح!' : 'Suggestion copied!');
+    }
+    
+    function showToast(message, type = 'success') {
+        const toast = document.getElementById('toast-notification');
+        const messageEl = document.getElementById('toast-message');
+        
+        messageEl.textContent = message;
+        toast.style.background = type === 'success' ? '#28a745' : '#dc3545';
+        toast.style.display = 'flex';
+        
+        setTimeout(() => {
+            toast.style.display = 'none';
+        }, 3000);
+    }
+    
+    // Auto-save functionality
+    let autoSaveTimeout;
+    const formFields = document.querySelectorAll('#ideaForm input, #ideaForm textarea, #ideaForm select');
+    
+    formFields.forEach(field => {
+        field.addEventListener('input', () => {
+            clearTimeout(autoSaveTimeout);
+            autoSaveTimeout = setTimeout(() => {
+                console.log('Auto-save triggered for field:', field.name);
+            }, 2000);
+        });
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,0 +1,215 @@
+<!-- templates/transcription/home.html -->
+{% extends 'transcription/base.html' %}
+
+{% block transcription_title %}Subtitle Generator & Editor{% endblock %}
+
+{% block transcription_content %}
+<div class="container">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <!-- Hero Section -->
+            <div class="text-center mb-5">
+                <h1 class="display-4 mb-3">
+                    <i class="bi bi-badge-cc"></i> Subtitle Generator
+                </h1>
+                <p class="lead text-muted">
+                    Generate and edit subtitles for your videos with AI-powered transcription
+                </p>
+                <div class="mt-4">
+                    <a href="{% url 'transcription:upload' %}" class="btn btn-primary btn-lg px-5">
+                        <i class="bi bi-upload me-2"></i> Upload Video
+                    </a>
+                </div>
+            </div>
+
+            <!-- Features Grid -->
+            <div class="row g-4 mb-5">
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="feature-icon bg-primary bg-gradient text-white rounded-circle p-3 mb-3 mx-auto" style="width: 60px; height: 60px;">
+                            <i class="bi bi-translate fs-4"></i>
+                        </div>
+                        <h5>Multi-Language</h5>
+                        <p class="text-muted small">Support for Arabic and English with translation capabilities</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="feature-icon bg-success bg-gradient text-white rounded-circle p-3 mb-3 mx-auto" style="width: 60px; height: 60px;">
+                            <i class="bi bi-pencil-square fs-4"></i>
+                        </div>
+                        <h5>Real-time Editing</h5>
+                        <p class="text-muted small">Edit subtitles directly with instant preview</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="text-center">
+                        <div class="feature-icon bg-info bg-gradient text-white rounded-circle p-3 mb-3 mx-auto" style="width: 60px; height: 60px;">
+                            <i class="bi bi-palette fs-4"></i>
+                        </div>
+                        <h5>Custom Styling</h5>
+                        <p class="text-muted small">Customize fonts, colors, and positioning</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Projects -->
+            {% if recent_projects %}
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Recent Projects</h5>
+                    <small class="text-muted">Last 5 projects</small>
+                </div>
+                <div class="list-group list-group-flush">
+                    {% for project in recent_projects %}
+                    <a href="{% url 'transcription:editor' project.id %}" class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <h6 class="mb-1">{{ project.video.original_filename }}</h6>
+                                <div class="d-flex gap-3">
+                                    <small class="text-muted">
+                                        <i class="bi bi-translate"></i> 
+                                        {{ project.get_source_language_display }}
+                                        {% if project.subtitle_mode == 'translate' %}
+                                        → {{ project.get_target_language_display }}
+                                        {% endif %}
+                                    </small>
+                                    <small class="text-muted">
+                                        <i class="bi bi-clock"></i> 
+                                        {{ project.created_at|timesince }} ago
+                                    </small>
+                                </div>
+                            </div>
+                            <div>
+                                {% if project.video.status == 'completed' %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle"></i> Ready
+                                    </span>
+                                {% elif project.video.status == 'processing' %}
+                                    <span class="badge bg-warning">
+                                        <i class="bi bi-gear-fill"></i> Processing
+                                    </span>
+                                {% elif project.video.status == 'failed' %}
+                                    <span class="badge bg-danger">
+                                        <i class="bi bi-x-circle"></i> Failed
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">
+                                        <i class="bi bi-hourglass"></i> Pending
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <!-- Empty State -->
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-film text-muted" style="font-size: 4rem;"></i>
+                    <h5 class="mt-3">No Projects Yet</h5>
+                    <p class="text-muted">Upload your first video to start generating subtitles</p>
+                    <a href="{% url 'transcription:upload' %}" class="btn btn-primary">
+                        <i class="bi bi-upload me-2"></i> Upload Video
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- How It Works -->
+            <div class="mt-5">
+                <h4 class="mb-4">How It Works</h4>
+                <div class="timeline">
+                    <div class="d-flex mb-3">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-circle bg-primary text-white p-2 text-center" style="width: 40px; height: 40px;">
+                                1
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6>Upload Your Video</h6>
+                            <p class="text-muted small mb-0">Support for MP4, MOV, AVI, and more formats</p>
+                        </div>
+                    </div>
+                    <div class="d-flex mb-3">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-circle bg-primary text-white p-2 text-center" style="width: 40px; height: 40px;">
+                                2
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6>Choose Language Settings</h6>
+                            <p class="text-muted small mb-0">Select source language and subtitle mode</p>
+                        </div>
+                    </div>
+                    <div class="d-flex mb-3">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-circle bg-primary text-white p-2 text-center" style="width: 40px; height: 40px;">
+                                3
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6>AI Generates Subtitles</h6>
+                            <p class="text-muted small mb-0">Automatic transcription using Whisper AI</p>
+                        </div>
+                    </div>
+                    <div class="d-flex mb-3">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-circle bg-primary text-white p-2 text-center" style="width: 40px; height: 40px;">
+                                4
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6>Edit and Customize</h6>
+                            <p class="text-muted small mb-0">Fine-tune text and styling with real-time preview</p>
+                        </div>
+                    </div>
+                    <div class="d-flex">
+                        <div class="flex-shrink-0">
+                            <div class="rounded-circle bg-success text-white p-2 text-center" style="width: 40px; height: 40px;">
+                                <i class="bi bi-check"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6>Export Your Subtitles</h6>
+                            <p class="text-muted small mb-0">Download as SRT, VTT, or Word document</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.feature-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.timeline {
+    position: relative;
+}
+
+.timeline::before {
+    content: '';
+    position: absolute;
+    left: 19px;
+    top: 40px;
+    bottom: 20px;
+    width: 2px;
+    background: #dee2e6;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+.badge {
+    padding: 0.5em 0.75em;
+}
+</style>
+{% endblock %}

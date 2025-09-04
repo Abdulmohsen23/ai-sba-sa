@@ -25,11 +25,13 @@ INSTALLED_APPS = [
     'crispy_bootstrap5',
     
     # Project apps - will add these later when we create them
-    # 'core',
-    # 'accounts',
-    # 'tool_registry',
-    # 'transcription',
-    # 'askme',
+    'core',
+    'accounts',
+    'tool_registry',
+    'transcription',
+    'askme',
+    'program_ideation',
+    'translation',
 ]
 
 MIDDLEWARE = [
@@ -41,6 +43,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.middleware.UserActivityMiddleware',  # Add this line
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -117,3 +120,10 @@ LOGOUT_REDIRECT_URL = 'login'
 # Crispy Forms
 CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
 CRISPY_TEMPLATE_PACK = 'bootstrap5'
+
+# API Keys
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
+DEEPSEEK_API_KEY = os.environ.get('DEEPSEEK_API_KEY', '')
+
+

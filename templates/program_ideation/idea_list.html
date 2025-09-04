@@ -1,0 +1,85 @@
+{% extends 'program_ideation/base.html' %}
+
+{% block ideation_title %}{{ title }}{% endblock %}
+
+{% block ideation_content %}
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="h5 mb-0">
+            {% if request.LANGUAGE_CODE == 'ar' %}
+            أفكاري البرامجية
+            {% else %}
+            My Program Ideas
+            {% endif %}
+        </h3>
+        <a href="{% url 'program_ideation:select_language' %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-plus-circle me-1"></i>
+            {% if request.LANGUAGE_CODE == 'ar' %}
+            فكرة جديدة
+            {% else %}
+            New Idea
+            {% endif %}
+        </a>
+    </div>
+    <div class="list-group list-group-flush">
+        {% for idea in ideas %}
+        <a href="
+            {% if idea.current_step == 'start' %}{% url 'program_ideation:start' idea.id %}
+            {% elif idea.current_step == 'specific_idea' %}{% url 'program_ideation:specific_idea' idea.id %}
+            {% elif idea.current_step == 'no_specific_idea' %}{% url 'program_ideation:no_specific_idea' idea.id %}
+            {% elif idea.current_step == 'suggestions' %}{% url 'program_ideation:suggestions' idea.id %}
+            {% elif idea.current_step == 'complete' %}{% url 'program_ideation:complete' idea.id %}
+            {% else %}{% url 'program_ideation:start' idea.id %}
+            {% endif %}
+        " class="list-group-item list-group-item-action">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <h6 class="mb-0 text-truncate" style="max-width: 70%;">
+                    {% if idea.program_name %}
+                    {{ idea.program_name }}
+                    {% else %}
+                    {% if idea.language == 'ar' %}
+                    فكرة برنامج بدون عنوان
+                    {% else %}
+                    Untitled Program Idea
+                    {% endif %}
+                    {% endif %}
+                </h6>
+                <span class="badge {% if idea.status == 'completed' %}bg-success{% elif idea.status == 'in_progress' %}bg-primary{% else %}bg-secondary{% endif %}">
+                    {% if idea.status == 'completed' %}
+                    {% if idea.language == 'ar' %}مكتمل{% else %}Completed{% endif %}
+                    {% elif idea.status == 'in_progress' %}
+                    {% if idea.language == 'ar' %}قيد التقدم{% else %}In Progress{% endif %}
+                    {% else %}
+                    {% if idea.language == 'ar' %}مسودة{% else %}Draft{% endif %}
+                    {% endif %}
+                </span>
+            </div>
+            <div class="d-flex justify-content-between align-items-center">
+                <small class="text-muted">{{ idea.created_at|date:"M d, Y h:i A" }}</small>
+                <small class="badge {% if idea.language == 'ar' %}bg-info{% else %}bg-secondary{% endif %}">
+                    {% if idea.language == 'ar' %}العربية{% else %}English{% endif %}
+                </small>
+            </div>
+        </a>
+        {% empty %}
+        <div class="list-group-item text-center py-4">
+            <p class="mb-2 text-muted">
+                {% if request.LANGUAGE_CODE == 'ar' %}
+                لم تقم بإنشاء أي أفكار برامجية بعد.
+                {% else %}
+                You haven't created any program ideas yet.
+                {% endif %}
+            </p>
+            <a href="{% url 'program_ideation:select_language' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i>
+                {% if request.LANGUAGE_CODE == 'ar' %}
+                إنشاء أول فكرة
+                {% else %}
+                Create Your First Idea
+                {% endif %}
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

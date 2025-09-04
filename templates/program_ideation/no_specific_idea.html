@@ -1,0 +1,85 @@
+{% extends 'program_ideation/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block ideation_title %}{{ title }}{% endblock %}
+
+{% block ideation_content %}
+<div class="ideation-container">
+    <div class="ideation-form-container">
+        <div class="card shadow-sm">
+            <div class="card-body p-4" {% if idea.language == 'ar' %}dir="rtl"{% endif %}>
+                <h3 class="card-title mb-4">
+                    {% if idea.language == 'ar' %}
+                    هل لديك تصور أولي عن البرنامج:
+                    {% else %}
+                    Do you have an initial concept for the program:
+                    {% endif %}
+                </h3>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div>
+                        {{ form.has_initial_concept|as_crispy_field }}
+                    </div>
+                    
+                    <div id="concept-field" style="display: none;">
+                        {{ form.initial_concept|as_crispy_field }}
+                    </div>
+                    
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check2-circle me-2"></i>
+                            {% if idea.language == 'ar' %}
+                            متابعة
+                            {% else %}
+                            Continue
+                            {% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="ideation-response-container">
+        <div class="response-area">
+            <h3 class="text-center">
+                {% if idea.language == 'ar' %}
+                منطقة اقتراحات الذكاء الاصطناعي
+                {% else %}
+                AI Suggestions Area
+                {% endif %}
+            </h3>
+            
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const conceptRadios = document.querySelectorAll('input[name="has_initial_concept"]');
+        const conceptField = document.getElementById('concept-field');
+        
+        // Initial check
+        for (const radio of conceptRadios) {
+            if (radio.checked && radio.value === 'True') {
+                conceptField.style.display = 'block';
+            }
+        }
+        
+        // Add change listeners
+        for (const radio of conceptRadios) {
+            radio.addEventListener('change', function() {
+                if (this.value === 'True') {
+                    conceptField.style.display = 'block';
+                } else {
+                    conceptField.style.display = 'none';
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}

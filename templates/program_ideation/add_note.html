@@ -1,0 +1,678 @@
+{% extends 'program_ideation/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block ideation_title %}{{ title }}{% endblock %}
+
+{% block ideation_content %}
+<style>
+    .field-selector {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .field-selector-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+    
+    .field-selector-title {
+        font-weight: 600;
+        font-size: 16px;
+        color: #495057;
+    }
+    
+    .field-selector-actions {
+        display: flex;
+        gap: 10px;
+    }
+    
+    .btn-select-action {
+        padding: 6px 12px;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-select-action:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+    }
+    
+    .field-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 15px;
+    }
+    
+    /* Updated styles to fix selection issues */
+    .field-option {
+        background: white;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        padding: 15px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+        user-select: none; /* Prevent text selection */
+    }
+    
+    .field-option:hover {
+        border-color: #adb5bd;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .field-option.selected {
+        border-color: #007bff;
+        background: #e7f3ff;
+    }
+    
+    .field-option.selected::after {
+        content: '\2713';
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: #007bff;
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+    }
+    
+    [dir="rtl"] .field-option.selected::after {
+        right: auto;
+        left: 10px;
+    }
+    
+    .field-option-name {
+        font-weight: 600;
+        color: #212529;
+        margin-bottom: 8px;
+    }
+    
+    .field-option-content {
+        color: #6c757d;
+        font-size: 14px;
+        line-height: 1.5;
+        max-height: 60px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+    }
+    
+    .field-option-content.empty {
+        font-style: italic;
+    }
+    
+    .field-status {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 11px;
+        margin-top: 8px;
+        font-weight: 600;
+    }
+    
+    .field-status.filled {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .field-status.empty {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    .note-type-selector {
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .note-type-options {
+        display: flex;
+        gap: 15px;
+        margin-top: 10px;
+    }
+    
+    .note-type-option {
+        flex: 1;
+        padding: 12px;
+        background: white;
+        border: 2px solid #ffc107;
+        border-radius: 8px;
+        cursor: pointer;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    
+    .note-type-option:hover {
+        background: #fff8e1;
+    }
+    
+    .note-type-option.active {
+        background: #ffc107;
+        color: #212529;
+    }
+    
+    .note-type-option i {
+        font-size: 24px;
+        display: block;
+        margin-bottom: 8px;
+    }
+    
+    .selected-fields-summary {
+        background: #d1ecf1;
+        border: 1px solid #bee5eb;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 20px;
+        display: none;
+    }
+    
+    .selected-fields-summary.show {
+        display: block;
+    }
+    
+    .selected-fields-summary h6 {
+        color: #0c5460;
+        margin-bottom: 8px;
+    }
+    
+    .selected-field-tag {
+        display: inline-block;
+        background: white;
+        padding: 4px 12px;
+        border-radius: 15px;
+        margin: 4px;
+        font-size: 13px;
+        border: 1px solid #bee5eb;
+    }
+    
+    .quick-select-buttons {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    
+    .btn-quick-select {
+        padding: 8px 16px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-quick-select:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    .note-templates {
+        margin-top: 15px;
+    }
+    
+    .template-option {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .template-option:hover {
+        background: #e9ecef;
+        border-color: #adb5bd;
+    }
+    
+    .template-option h6 {
+        margin: 0 0 5px 0;
+        color: #495057;
+        font-size: 14px;
+    }
+    
+    .template-option p {
+        margin: 0;
+        color: #6c757d;
+        font-size: 13px;
+    }
+
+    /* Make sure checkbox is truly hidden but still functional */
+    .field-checkbox {
+        position: absolute;
+        opacity: 0;
+        pointer-events: none;
+    }
+    
+    .field-option-content {
+        pointer-events: none; /* Prevent content from blocking clicks */
+    }
+    
+    .field-status {
+        pointer-events: none; /* Prevent status badge from blocking clicks */
+    }
+</style>
+
+<div class="card shadow-sm">
+    <div class="card-body p-4" {% if idea.language == 'ar' %}dir="rtl"{% endif %}>
+        <h3 class="card-title mb-4">
+            {% if idea.language == 'ar' %}
+            إضافة ملاحظة لتحسين البرنامج
+            {% else %}
+            Add Note for Program Enhancement
+            {% endif %}
+        </h3>
+        
+        <!-- Note Type Selector -->
+        <!-- <div class="note-type-selector">
+            <h5>
+                <i class="bi bi-question-circle"></i>
+                {% if idea.language == 'ar' %}
+                ما نوع الملاحظة التي تريد إضافتها؟
+                {% else %}
+                What type of note would you like to add?
+                {% endif %}
+            </h5>
+            <div class="note-type-options">
+                <div class="note-type-option active" data-type="enhancement">
+                    <i class="bi bi-magic"></i>
+                    <span>
+                        {% if idea.language == 'ar' %}
+                        تحسين وتطوير
+                        {% else %}
+                        Enhancement
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="note-type-option" data-type="question">
+                    <i class="bi bi-question-diamond"></i>
+                    <span>
+                        {% if idea.language == 'ar' %}
+                        سؤال أو استفسار
+                        {% else %}
+                        Question
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="note-type-option" data-type="concern">
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <span>
+                        {% if idea.language == 'ar' %}
+                        مخاوف أو تحديات
+                        {% else %}
+                        Concerns
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div> -->
+        
+        <form method="post" id="noteForm">
+            {% csrf_token %}
+            
+            <!-- Field Selector -->
+            <div class="field-selector">
+                <div class="field-selector-header">
+                    <div class="field-selector-title">
+                        <i class="bi bi-ui-checks"></i>
+                        {% if idea.language == 'ar' %}
+                        اختر الحقول المتعلقة بملاحظتك
+                        {% else %}
+                        Select Fields Related to Your Note
+                        {% endif %}
+                    </div>
+                    <div class="field-selector-actions">
+                        <button type="button" class="btn-select-action" onclick="selectAllFields()">
+                            {% if idea.language == 'ar' %}
+                            تحديد الكل
+                            {% else %}
+                            Select All
+                            {% endif %}
+                        </button>
+                        <button type="button" class="btn-select-action" onclick="deselectAllFields()">
+                            {% if idea.language == 'ar' %}
+                            إلغاء التحديد
+                            {% else %}
+                            Deselect All
+                            {% endif %}
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Quick Select Buttons -->
+                <div class="quick-select-buttons">
+                    <button type="button" class="btn-quick-select" onclick="selectEmptyFields()">
+                        <i class="bi bi-inbox"></i>
+                        {% if idea.language == 'ar' %}
+                        الحقول الفارغة
+                        {% else %}
+                        Empty Fields
+                        {% endif %}
+                    </button>
+                    <button type="button" class="btn-quick-select" onclick="selectMainFields()">
+                        <i class="bi bi-star"></i>
+                        {% if idea.language == 'ar' %}
+                        الحقول الرئيسية
+                        {% else %}
+                        Main Fields
+                        {% endif %}
+                    </button>
+                </div>
+                
+                <!-- Field Grid -->
+                        <div class="field-grid">
+            {% for field_id, field_info in fields.items %}
+            <label class="field-option" data-field-id="{{ field_id }}" data-is-empty="{{ field_info.is_empty|yesno:'true,false' }}">
+                <input type="checkbox" name="fields" value="{{ field_id }}" class="field-checkbox">
+                <div class="field-option-name">
+                    {{ field_info.label }}
+                </div>
+                <div class="field-option-content {% if field_info.is_empty %}empty{% endif %}">
+                    {{ field_info.content|default:"(Empty)" }}
+                </div>
+                <span class="field-status {% if field_info.is_empty %}empty{% else %}filled{% endif %}">
+                    {% if field_info.is_empty %}
+                        {% if idea.language == 'ar' %}فارغ{% else %}Empty{% endif %}
+                    {% else %}
+                        {% if idea.language == 'ar' %}محتوى موجود{% else %}Has Content{% endif %}
+                    {% endif %}
+                </span>
+            </label>
+            {% endfor %}
+        </div>
+            </div>
+            
+            <!-- Selected Fields Summary -->
+            <div class="selected-fields-summary" id="selectedFieldsSummary">
+                <h6>
+                    <i class="bi bi-check2-square"></i>
+                    {% if idea.language == 'ar' %}
+                    الحقول المحددة:
+                    {% else %}
+                    Selected Fields:
+                    {% endif %}
+                </h6>
+                <div id="selectedFieldsTags"></div>
+            </div>
+            
+            <!-- Note Content -->
+            <div class="mb-3">
+                <label for="note_content" class="form-label">
+                    {% if idea.language == 'ar' %}
+                    محتوى الملاحظة
+                    {% else %}
+                    Note Content
+                    {% endif %}
+                </label>
+                <textarea 
+                    name="note_content" 
+                    id="note_content" 
+                    class="form-control" 
+                    rows="6" 
+                    required
+                    placeholder="{% if idea.language == 'ar' %}اكتب ملاحظتك هنا...{% else %}Write your note here...{% endif %}"
+                ></textarea>
+                
+                <!-- Note Templates -->
+                <div class="note-templates">
+                    <small class="text-muted">
+                        {% if idea.language == 'ar' %}
+                        قوالب سريعة:
+                        {% else %}
+                        Quick Templates:
+                        {% endif %}
+                    </small>
+                    <div class="template-option" onclick="useTemplate('enhance')">
+                        <h6>
+                            {% if idea.language == 'ar' %}
+                            طلب تحسين
+                            {% else %}
+                            Enhancement Request
+                            {% endif %}
+                        </h6>
+                        <p>
+                            {% if idea.language == 'ar' %}
+                            "أرغب في تحسين هذا الحقل ليكون أكثر..."
+                            {% else %}
+                            "I would like to enhance this field to be more..."
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="template-option" onclick="useTemplate('question')">
+                        <h6>
+                            {% if idea.language == 'ar' %}
+                            سؤال توضيحي
+                            {% else %}
+                            Clarification Question
+                            {% endif %}
+                        </h6>
+                        <p>
+                            {% if idea.language == 'ar' %}
+                            "هل يمكن توضيح أو تطوير..."
+                            {% else %}
+                            "Could you clarify or develop..."
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Priority Level -->
+            <!-- <div class="mb-3">
+                <label class="form-label">
+                    {% if idea.language == 'ar' %}
+                    مستوى الأولوية
+                    {% else %}
+                    Priority Level
+                    {% endif %}
+                </label>
+                <select name="priority" class="form-select">
+                    <option value="low">
+                        {% if idea.language == 'ar' %}منخفض{% else %}Low{% endif %}
+                    </option>
+                    <option value="medium" selected>
+                        {% if idea.language == 'ar' %}متوسط{% else %}Medium{% endif %}
+                    </option>
+                    <option value="high">
+                        {% if idea.language == 'ar' %}عالي{% else %}High{% endif %}
+                    </option>
+                </select>
+            </div> -->
+            
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{% url 'program_ideation:note_list' idea_id=idea.id %}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-2"></i>
+                    {% if idea.language == 'ar' %}
+                    العودة
+                    {% else %}
+                    Back
+                    {% endif %}
+                </a>
+                
+                <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
+                    <i class="bi bi-send me-2"></i>
+                    {% if idea.language == 'ar' %}
+                    إرسال الملاحظة
+                    {% else %}
+                    Submit Note
+                    {% endif %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const isRTL = document.documentElement.lang === 'ar' || 
+                  document.querySelector('[dir="rtl"]') !== null;
+    
+    // Fixed field selection handling
+    const fieldOptions = document.querySelectorAll('.field-option');
+    const selectedFieldsSummary = document.getElementById('selectedFieldsSummary');
+    const selectedFieldsTags = document.getElementById('selectedFieldsTags');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    // Use event delegation for better handling
+    fieldOptions.forEach(option => {
+        // Remove any existing listeners
+        option.replaceWith(option.cloneNode(true));
+    });
+    
+    // Re-select after cloning
+    document.querySelectorAll('.field-option').forEach(option => {
+        option.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const checkbox = this.querySelector('.field-checkbox');
+            if (checkbox) {
+                checkbox.checked = !checkbox.checked;
+                this.classList.toggle('selected', checkbox.checked);
+                updateSelectedFields();
+            }
+        });
+        
+        // Also handle checkbox change directly
+        const checkbox = option.querySelector('.field-checkbox');
+        if (checkbox) {
+            checkbox.addEventListener('change', function(e) {
+                e.stopPropagation();
+                option.classList.toggle('selected', this.checked);
+                updateSelectedFields();
+            });
+        }
+    });
+    
+    function updateSelectedFields() {
+        const selectedFields = document.querySelectorAll('.field-checkbox:checked');
+        
+        if (selectedFields.length > 0) {
+            selectedFieldsSummary.classList.add('show');
+            submitBtn.disabled = false;
+            
+            selectedFieldsTags.innerHTML = '';
+            selectedFields.forEach(field => {
+                const fieldOption = field.closest('.field-option');
+                const fieldName = fieldOption.querySelector('.field-option-name').textContent;
+                const tag = document.createElement('span');
+                tag.className = 'selected-field-tag';
+                tag.textContent = fieldName.trim();
+                selectedFieldsTags.appendChild(tag);
+            });
+        } else {
+            selectedFieldsSummary.classList.remove('show');
+            submitBtn.disabled = true;
+        }
+    }
+    
+    // Quick select functions
+    window.selectAllFields = function() {
+        document.querySelectorAll('.field-option').forEach(option => {
+            const checkbox = option.querySelector('.field-checkbox');
+            if (checkbox) {
+                checkbox.checked = true;
+                option.classList.add('selected');
+            }
+        });
+        updateSelectedFields();
+    };
+    
+    window.deselectAllFields = function() {
+        document.querySelectorAll('.field-option').forEach(option => {
+            const checkbox = option.querySelector('.field-checkbox');
+            if (checkbox) {
+                checkbox.checked = false;
+                option.classList.remove('selected');
+            }
+        });
+        updateSelectedFields();
+    };
+    
+    window.selectEmptyFields = function() {
+        document.querySelectorAll('.field-option').forEach(option => {
+            const checkbox = option.querySelector('.field-checkbox');
+            const isEmpty = option.dataset.isEmpty === 'true';
+            if (checkbox) {
+                checkbox.checked = isEmpty;
+                option.classList.toggle('selected', isEmpty);
+            }
+        });
+        updateSelectedFields();
+    };
+    
+    window.selectMainFields = function() {
+        const mainFields = ['program_name', 'general_idea', 'target_audience', 'program_objectives'];
+        document.querySelectorAll('.field-option').forEach(option => {
+            const checkbox = option.querySelector('.field-checkbox');
+            const fieldId = option.dataset.fieldId;
+            const isMain = mainFields.includes(fieldId);
+            if (checkbox) {
+                checkbox.checked = isMain;
+                option.classList.toggle('selected', isMain);
+            }
+        });
+        updateSelectedFields();
+    };
+    
+    window.useTemplate = function(type) {
+        const noteContent = document.getElementById('note_content');
+        const templates = {
+            enhance: {
+                ar: 'أرغب في تحسين هذه الحقول لتكون أكثر جاذبية وملاءمة للجمهور المستهدف. يرجى تقديم اقتراحات محددة وقابلة للتطبيق.',
+                en: 'I would like to enhance these fields to be more appealing and suitable for the target audience. Please provide specific and actionable suggestions.'
+            },
+            // question: {
+            //     ar: 'هل يمكن توضيح أو تطوير المحتوى الحالي لهذه الحقول؟ أحتاج إلى مزيد من التفاصيل حول...',
+            //     en: 'Could you clarify or develop the current content of these fields? I need more details about...'
+            // }
+        };
+        
+        if (templates[type]) {
+            noteContent.value = isRTL ? templates[type].ar : templates[type].en;
+            noteContent.focus();
+        }
+    };
+    
+    // Form validation
+    document.getElementById('noteForm').addEventListener('submit', function(e) {
+        const selectedFields = document.querySelectorAll('.field-checkbox:checked');
+        const noteContent = document.getElementById('note_content').value.trim();
+        
+        if (selectedFields.length === 0) {
+            e.preventDefault();
+            alert(isRTL ? 'يرجى تحديد حقل واحد على الأقل' : 'Please select at least one field');
+            return false;
+        }
+        
+        if (!noteContent) {
+            e.preventDefault();
+            alert(isRTL ? 'يرجى كتابة محتوى الملاحظة' : 'Please write the note content');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}
+{% endblock %}

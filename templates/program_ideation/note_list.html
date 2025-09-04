@@ -1,0 +1,91 @@
+{% extends 'program_ideation/base.html' %}
+
+{% block ideation_title %}{{ title }}{% endblock %}
+
+{% block tool_actions %}
+<a href="{% url 'program_ideation:specific_idea' idea_id=idea.id %}" class="btn btn-outline-secondary me-2">
+    <i class="bi bi-arrow-left"></i>
+    {% if idea.language == 'ar' %}
+    العودة للبرنامج
+    {% else %}
+    Back to Program
+    {% endif %}
+</a>
+<a href="{% url 'program_ideation:add_note' idea_id=idea.id %}" class="btn btn-primary">
+    <i class="bi bi-plus-circle"></i>
+    {% if idea.language == 'ar' %}
+    إضافة ملاحظة جديدة
+    {% else %}
+    Add New Note
+    {% endif %}
+</a>
+{% endblock %}
+
+{% block ideation_content %}
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h3 class="h5 mb-0">
+            {% if idea.language == 'ar' %}
+            ملاحظات البرنامج: {{ idea.program_name }}
+            {% else %}
+            Program Notes: {{ idea.program_name }}
+            {% endif %}
+        </h3>
+    </div>
+    <div class="list-group list-group-flush">
+        {% for note in notes %}
+        <a href="{% url 'program_ideation:note_detail' note_id=note.id %}" class="list-group-item list-group-item-action" {% if idea.language == 'ar' %}dir="rtl"{% endif %}>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">
+                    {% if idea.language == 'ar' %}
+                    {{ note.get_field_label_arabic }}
+                    {% else %}
+                    {{ note.get_field_name_display }}
+                    {% endif %}
+                </h6>
+                <span class="badge {% if note.status == 'completed' %}bg-success{% elif note.status == 'processing' %}bg-primary{% elif note.status == 'failed' %}bg-danger{% else %}bg-secondary{% endif %}">
+                    {% if note.status == 'completed' %}
+                        {% if idea.language == 'ar' %}مكتمل{% else %}Completed{% endif %}
+                    {% elif note.status == 'processing' %}
+                        {% if idea.language == 'ar' %}قيد المعالجة{% else %}Processing{% endif %}
+                    {% elif note.status == 'failed' %}
+                        {% if idea.language == 'ar' %}فشل{% else %}Failed{% endif %}
+                    {% else %}
+                        {% if idea.language == 'ar' %}قيد الانتظار{% else %}Pending{% endif %}
+                    {% endif %}
+                </span>
+            </div>
+            <div class="note-content text-muted">
+                {{ note.note_content|truncatechars:100 }}
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <small class="text-muted">{{ note.created_at|date:"M d, Y h:i A" }}</small>
+                {% if note.is_applied %}
+                <span class="badge bg-info">
+                    {% if idea.language == 'ar' %}تم التطبيق{% else %}Applied{% endif %}
+                </span>
+                {% endif %}
+            </div>
+        </a>
+        {% empty %}
+        <div class="list-group-item text-center py-4">
+            <p class="mb-2 text-muted">
+                {% if idea.language == 'ar' %}
+                لم تقم بإضافة أي ملاحظات بعد.
+                {% else %}
+                You haven't added any notes yet.
+                {% endif %}
+            </p>
+            <a href="{% url 'program_ideation:add_note' idea_id=idea.id %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-1"></i>
+                {% if idea.language == 'ar' %}
+                إضافة ملاحظة
+                {% else %}
+                Add Note
+                {% endif %}
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

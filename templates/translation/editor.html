@@ -1,0 +1,2242 @@
+{% extends 'translation/base.html' %}
+{% load static %}
+
+{% block translation_title %}Enhanced Video Editor - {{ project.title }}{% endblock %}
+{% block translation_header %}Video Editor: {{ project.title }}{% endblock %}
+
+{% block translation_actions %}
+<a href="{% url 'translation:detail' pk=project.pk %}" class="btn btn-outline-primary">
+    <i class="bi bi-arrow-left"></i> Back to Project
+</a>
+{% endblock %}
+
+{% block translation_extra_css %}
+<style>
+    .editor-workspace {
+        display: grid;
+        grid-template-columns: 260px 1fr 300px;
+        gap: 15px;
+        height: calc(100vh - 180px);
+    }
+    
+    .subtitle-list-panel {
+        overflow-y: auto;
+        max-height: 100%;
+    }
+    
+    .video-preview-panel {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    
+    .video-container {
+        position: relative;
+        width: 100%;
+        flex-grow: 1;
+        background-color: #000;
+    }
+    
+    #video-player {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+    
+    .subtitle-display {
+        position: absolute;
+        bottom: 80px;
+        left: 0;
+        width: 100%;
+        text-align: center;
+        pointer-events: none;
+        z-index: 10;
+    }
+    
+    .timeline-container {
+        height: 120px;
+        margin-top: 15px;
+        background: #f5f5f5;
+        border-radius: 6px;
+        border: 1px solid #ddd;
+        overflow: hidden;
+        position: relative;
+    }
+    
+    .timeline-ruler {
+        height: 24px;
+        background: #e9e9e9;
+        border-bottom: 1px solid #ddd;
+        position: relative;
+    }
+    
+    .timeline-markers {
+        height: 95px;
+        position: relative;
+    }
+    
+    .timeline-segment {
+        position: absolute;
+        height: 30px;
+        background: rgba(0, 123, 255, 0.7);
+        border-radius: 4px;
+        cursor: move;
+        z-index: 2;
+        color: white;
+        font-size: 12px;
+        padding: 5px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    
+    .timeline-segment:hover {
+        background: rgba(0, 123, 255, 0.9);
+    }
+    
+    .timeline-segment.active {
+        background: rgba(40, 167, 69, 0.8);
+        border: 2px solid rgb(40, 167, 69);
+        z-index: 3;
+    }
+    
+    .timeline-segment .handle {
+        position: absolute;
+        width: 8px;
+        height: 100%;
+        top: 0;
+        background: rgba(255, 255, 255, 0.3);
+        cursor: col-resize;
+    }
+    
+    .timeline-segment .handle-left {
+        left: 0;
+    }
+    
+    .timeline-segment .handle-right {
+        right: 0;
+    }
+    
+    .timeline-current {
+        position: absolute;
+        height: 100%;
+        width: 2px;
+        background-color: red;
+        z-index: 10;
+        top: 0;
+        pointer-events: none;
+    }
+    
+    .timeline-ruler-tick {
+        position: absolute;
+        width: 1px;
+        top: 0;
+        height: 8px;
+        background: #888;
+    }
+    
+    .timeline-ruler-tick.major {
+        height: 16px;
+        background: #555;
+    }
+    
+    .timeline-ruler-label {
+        position: absolute;
+        font-size: 10px;
+        top: 18px;
+        transform: translateX(-50%);
+        color: #555;
+    }
+    
+    .subtitle-item {
+        padding: 8px 12px;
+        border-bottom: 1px solid #eee;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .subtitle-item:hover {
+        background-color: #f8f9fa;
+    }
+    
+    .subtitle-item.active {
+        background-color: #e9f5ff;
+        border-left: 3px solid #007bff;
+    }
+    
+    .subtitle-item .subtitle-time {
+        font-size: 11px;
+        color: #666;
+    }
+    
+    .subtitle-item .subtitle-text {
+        font-size: 13px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .subtitle-item .subtitle-speaker {
+        font-size: 11px;
+        color: #007bff;
+        font-weight: 500;
+    }
+    
+    .editor-panel {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow-y: auto;
+    }
+    
+    .editor-panel-content {
+        flex: 1;
+        overflow-y: auto;
+    }
+    
+    .image-overlay-item {
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-bottom: 8px;
+        background: #f9f9f9;
+    }
+    
+    .image-preview {
+        max-width: 100%;
+        height: 60px;
+        object-fit: contain;
+        margin-bottom: 8px;
+    }
+    
+    .timestamp-control {
+        display: flex;
+        align-items: center;
+    }
+    
+    .timestamp-control input {
+        width: 70px;
+        text-align: center;
+    }
+    
+    .timestamp-control .timestamp-separator {
+        margin: 0 5px;
+    }
+    
+    .timestamp-control .timestamp-buttons {
+        display: flex;
+        flex-direction: column;
+        margin-left: 5px;
+    }
+    
+    .timestamp-control .timestamp-btn {
+        padding: 0;
+        font-size: 10px;
+        width: 20px;
+        height: 12px;
+        line-height: 0;
+        margin-bottom: 2px;
+    }
+    
+    .tools-panel {
+        border-top: 1px solid #ddd;
+        padding-top: 10px;
+        margin-top: 10px;
+    }
+    
+    .tools-panel .btn {
+        margin-bottom: 5px;
+    }
+    
+    .tab-pane {
+        padding: 15px;
+    }
+    
+    /* Image overlay on video */
+    .image-overlay {
+        position: absolute;
+        z-index: 5;
+        pointer-events: none;
+    }
+    
+    /* Drag handles for resizing */
+    .image-overlay.editable {
+        pointer-events: auto;
+        border: 2px dashed rgba(255, 255, 255, 0.5);
+    }
+    
+    .image-overlay.editable:hover {
+        border: 2px dashed rgba(0, 123, 255, 0.7);
+    }
+    
+    .resize-handle {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        background: white;
+        border: 1px solid #007bff;
+        z-index: 11;
+    }
+    
+    .resize-handle-nw { top: -5px; left: -5px; cursor: nw-resize; }
+    .resize-handle-ne { top: -5px; right: -5px; cursor: ne-resize; }
+    .resize-handle-sw { bottom: -5px; left: -5px; cursor: sw-resize; }
+    .resize-handle-se { bottom: -5px; right: -5px; cursor: se-resize; }
+</style>
+{% endblock %}
+
+{% block translation_content %}
+<div class="editor-workspace">
+    <!-- Left sidebar: Subtitle list -->
+    <div class="subtitle-list-panel card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Subtitles</h5>
+            <div>
+                <button class="btn btn-sm btn-primary" id="add-subtitle-btn" title="Add New Subtitle">
+                    <i class="bi bi-plus-lg"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="p-2">
+                <input type="text" class="form-control form-control-sm" id="subtitle-search" placeholder="Search subtitles...">
+            </div>
+            <div id="subtitle-list" class="subtitle-list">
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Middle: Video preview and timeline -->
+    <div class="video-preview-panel">
+        <div class="card shadow-sm mb-0">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Video Preview</h5>
+                <div class="video-controls">
+                    <button class="btn btn-sm btn-outline-light" id="play-pause-btn">
+                        <i class="bi bi-play-fill"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-light ms-1" id="fullscreen-btn">
+                        <i class="bi bi-fullscreen"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0 video-container">
+                <video id="video-player" controls>
+                    <source src="{{ project.video_file.url }}" type="video/mp4">
+                </video>
+                <div id="subtitle-display" class="subtitle-display"></div>
+                <div id="image-overlays-container">
+                    <!-- Image overlays will be added here -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Timeline control -->
+        <div class="timeline-container">
+            <div class="timeline-ruler" id="timeline-ruler">
+                <!-- Ruler ticks will be added by JavaScript -->
+            </div>
+            <div class="timeline-markers" id="timeline-markers">
+                <!-- Subtitle markers will be added by JavaScript -->
+                <div class="timeline-current" id="timeline-current"></div>
+            </div>
+        </div>
+        
+        <!-- Playback controls -->
+        <div class="d-flex justify-content-between align-items-center mt-2">
+            <div class="btn-group">
+                <button class="btn btn-sm btn-outline-secondary" id="jump-back-btn">
+                    <i class="bi bi-arrow-left"></i> 1s
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" id="prev-subtitle-btn">
+                    <i class="bi bi-skip-backward-fill"></i>
+                </button>
+                <button class="btn btn-sm btn-primary" id="play-pause-btn-alt">
+                    <i class="bi bi-play-fill"></i> Play
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" id="next-subtitle-btn">
+                    <i class="bi bi-skip-forward-fill"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" id="jump-forward-btn">
+                    1s <i class="bi bi-arrow-right"></i>
+                </button>
+            </div>
+            
+            <div class="time-display">
+                <span id="current-time-display">00:00</span> / <span id="total-time-display">00:00</span>
+            </div>
+            
+            <div class="playback-speed">
+                <select id="playback-speed" class="form-select form-select-sm">
+                    <option value="0.5">0.5x</option>
+                    <option value="0.75">0.75x</option>
+                    <option value="1" selected>1.0x</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2">2.0x</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right sidebar: Editor tools -->
+    <div class="editor-panel card shadow-sm">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" id="editorTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="subtitle-tab" data-bs-toggle="tab" data-bs-target="#subtitle-pane" type="button" role="tab">
+                        Subtitle
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="images-tab" data-bs-toggle="tab" data-bs-target="#images-pane" type="button" role="tab">
+                        Images
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="style-tab" data-bs-toggle="tab" data-bs-target="#style-pane" type="button" role="tab">
+                        Styling
+                    </button>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="card-body p-0 editor-panel-content">
+            <div class="tab-content">
+                <!-- Subtitle Editing Tab -->
+                <div class="tab-pane fade show active" id="subtitle-pane" role="tabpanel">
+                    <div id="no-subtitle-selected" class="p-3">
+                        <div class="alert alert-info">
+                            Select a subtitle to edit or 
+                            <a href="#" id="create-subtitle-link">create a new one</a>
+                        </div>
+                    </div>
+                    
+                    <div id="subtitle-editor-form" class="p-3" style="display: none;">
+                        <input type="hidden" id="subtitle-id">
+                        <input type="hidden" id="subtitle-sequence">
+                        
+                        <div class="mb-3">
+                            <label class="form-label d-flex justify-content-between">
+                                <span>Timestamp</span>
+                                <a href="#" id="set-current-time" class="text-primary small">Set to current time</a>
+                            </label>
+                            <div class="d-flex">
+                                <div class="timestamp-control me-2">
+                                    <input type="text" id="start-time" class="form-control form-control-sm" placeholder="00:00.000">
+                                    <div class="timestamp-buttons ms-1">
+                                        <button class="btn btn-outline-secondary timestamp-btn" id="start-time-up">▲</button>
+                                        <button class="btn btn-outline-secondary timestamp-btn" id="start-time-down">▼</button>
+                                    </div>
+                                </div>
+                                <div class="timestamp-separator">to</div>
+                                <div class="timestamp-control ms-2">
+                                    <input type="text" id="end-time" class="form-control form-control-sm" placeholder="00:00.000">
+                                    <div class="timestamp-buttons ms-1">
+                                        <button class="btn btn-outline-secondary timestamp-btn" id="end-time-up">▲</button>
+                                        <button class="btn btn-outline-secondary timestamp-btn" id="end-time-down">▼</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="subtitle-speaker" class="form-label">Speaker (optional)</label>
+                            <input type="text" id="subtitle-speaker" class="form-control" placeholder="Who is speaking?">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="subtitle-text" class="form-label">
+                                {{ project.get_source_language_display }} Text
+                            </label>
+                            <textarea id="subtitle-text" class="form-control" rows="3" placeholder="Enter subtitle text..."></textarea>
+                        </div>
+                        
+                        {% if project.translation_mode == 'translate' %}
+                        <div class="mb-3">
+                            <label for="subtitle-translation" class="form-label">
+                                {% if project.source_language == 'ar' %}English{% else %}Arabic{% endif %} Translation
+                            </label>
+                            <textarea id="subtitle-translation" class="form-control" rows="3" placeholder="Enter translation..."></textarea>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="d-flex justify-content-between mb-3">
+                            <button id="delete-subtitle-btn" class="btn btn-outline-danger btn-sm">
+                                <i class="bi bi-trash"></i> Delete
+                            </button>
+                            <button id="save-subtitle-btn" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Save Changes
+                            </button>
+                        </div>
+                        
+                        <div class="subtitle-navigation d-flex justify-content-between">
+                            <button class="btn btn-sm btn-outline-secondary" id="prev-subtitle-edit-btn">
+                                <i class="bi bi-arrow-left"></i> Previous
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" id="next-subtitle-edit-btn">
+                                Next <i class="bi bi-arrow-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Image Overlay Tab -->
+                <div class="tab-pane fade" id="images-pane" role="tabpanel">
+                    <div class="p-3">
+                        <h6 class="mb-3">Add Images to Video</h6>
+                        
+                        <div class="mb-3">
+                            <label for="image-upload" class="form-label">Upload Image</label>
+                            <input type="file" id="image-upload" class="form-control" accept="image/*">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Display Time</label>
+                            <div class="d-flex">
+                                <div class="timestamp-control me-2">
+                                    <input type="text" id="image-start-time" class="form-control form-control-sm" placeholder="00:00.000">
+                                </div>
+                                <div class="timestamp-separator">to</div>
+                                <div class="timestamp-control ms-2">
+                                    <input type="text" id="image-end-time" class="form-control form-control-sm" placeholder="00:00.000">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <button id="add-image-btn" class="btn btn-primary w-100">
+                                <i class="bi bi-plus-lg"></i> Add Image to Video
+                            </button>
+                        </div>
+                        
+                        <hr>
+                        
+                        <h6 class="mb-3">Image Overlays</h6>
+                        <div id="image-overlays-list">
+                            <!-- Will be populated by JavaScript -->
+                            <div class="alert alert-info">No images added yet</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Styling Tab -->
+                <div class="tab-pane fade" id="style-pane" role="tabpanel">
+                    <div class="p-3">
+                        <h6 class="mb-3">Subtitle Appearance</h6>
+                        
+                        <div class="mb-3">
+                            <label for="font-family" class="form-label">Font</label>
+                            <select id="font-family" class="form-select">
+                                <option value="Arial">Arial</option>
+                                <option value="Helvetica">Helvetica</option>
+                                <option value="Verdana">Verdana</option>
+                                <option value="Tahoma">Tahoma</option>
+                                <option value="'Times New Roman'">Times New Roman</option>
+                                <option value="Georgia">Georgia</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="font-size" class="form-label">Size</label>
+                            <input type="range" class="form-range" id="font-size" min="12" max="48" value="16">
+                            <div class="d-flex justify-content-between">
+                                <small>Small</small>
+                                <small id="font-size-value">16px</small>
+                                <small>Large</small>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Style</label>
+                            <div class="btn-group w-100">
+                                <button class="btn btn-outline-secondary" id="btn-bold">B</button>
+                                <button class="btn btn-outline-secondary" id="btn-italic">I</button>
+                                <button class="btn btn-outline-secondary" id="btn-underline">U</button>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Alignment</label>
+                            <div class="btn-group w-100">
+                                <button class="btn btn-outline-secondary" id="align-left">
+                                    <i class="bi bi-text-left"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary active" id="align-center">
+                                    <i class="bi bi-text-center"></i>
+                                </button>
+                                <button class="btn btn-outline-secondary" id="align-right">
+                                    <i class="bi bi-text-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="text-color" class="form-label">Text Color</label>
+                            <input type="color" class="form-control form-control-color w-100" id="text-color" value="#FFFFFF">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="bg-color" class="form-label">Background</label>
+                            <input type="color" class="form-control form-control-color w-100" id="bg-color" value="#000000">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="bg-opacity" class="form-label">Background Opacity</label>
+                            <input type="range" class="form-range" id="bg-opacity" min="0" max="1" step="0.1" value="0.5">
+                            <div class="d-flex justify-content-between">
+                                <small>Transparent</small>
+                                <small id="opacity-value">50%</small>
+                                <small>Solid</small>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <button id="apply-style-all" class="btn btn-primary w-100">
+                                Apply to All Subtitles
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-footer">
+            <div class="d-grid gap-2">
+                <button class="btn btn-success" id="save-all-btn">
+                    <i class="bi bi-save"></i> Save All Changes
+                </button>
+                <button class="btn btn-primary" id="export-video-btn">
+                    <i class="bi bi-download"></i> Export Video
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for adding new subtitle -->
+<div class="modal fade" id="new-subtitle-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Subtitle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Timestamp</label>
+                    <div class="d-flex">
+                        <div class="timestamp-control me-2 flex-grow-1">
+                            <input type="text" id="new-start-time" class="form-control" placeholder="00:00.000">
+                        </div>
+                        <div class="timestamp-separator">to</div>
+                        <div class="timestamp-control ms-2 flex-grow-1">
+                            <input type="text" id="new-end-time" class="form-control" placeholder="00:00.000">
+                        </div>
+                    </div>
+                    <div class="form-text">
+                        <button class="btn btn-sm btn-link p-0" id="set-new-current-time">Set to current video position</button>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="new-subtitle-speaker" class="form-label">Speaker (optional)</label>
+                    <input type="text" id="new-subtitle-speaker" class="form-control" placeholder="Who is speaking?">
+                </div>
+                
+                <div class="mb-3">
+                    <label for="new-subtitle-text" class="form-label">{{ project.get_source_language_display }} Text</label>
+                    <textarea id="new-subtitle-text" class="form-control" rows="3" placeholder="Enter subtitle text..."></textarea>
+                </div>
+                
+                {% if project.translation_mode == 'translate' %}
+                <div class="mb-3">
+                    <label for="new-subtitle-translation" class="form-label">
+                        {% if project.source_language == 'ar' %}English{% else %}Arabic{% endif %} Translation
+                    </label>
+                    <textarea id="new-subtitle-translation" class="form-control" rows="3" placeholder="Enter translation..."></textarea>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="create-subtitle-btn">Create Subtitle</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal for export options -->
+<div class="modal fade" id="export-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Export Video</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Subtitle Language</label>
+                    <select id="export-subtitle-lang" class="form-select">
+                        <option value="original">{{ project.get_source_language_display }}</option>
+                        {% if project.translation_mode == 'translate' %}
+                        <option value="translated">{% if project.source_language == 'ar' %}English{% else %}Arabic{% endif %}</option>
+                        {% endif %}
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Font Size</label>
+                    <input type="range" class="form-range" id="export-font-size" min="12" max="48" value="24">
+                    <div class="d-flex justify-content-between">
+                        <small>Small</small>
+                        <small id="export-font-size-value">24px</small>
+                        <small>Large</small>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="export-font-color" class="form-label">Font Color</label>
+                    <input type="color" id="export-font-color" class="form-control form-control-color w-100" value="#FFFFFF">
+                </div>
+                
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="include-images" checked>
+                        <label class="form-check-label" for="include-images">
+                            Include image overlays
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    Export process may take several minutes depending on video length and complexity
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="start-export-btn">
+                    <i class="bi bi-download"></i> Start Export
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Project information
+    const projectId = {{ project.id }};
+    const projectLanguage = "{{ project.source_language }}";
+    // const translationMode = "{{ project.translation_mode }}";
+    document.body.dataset.translationMode = "{{ project.translation_mode }}";
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    // Initialize the editor when the DOM is loaded
+    document.addEventListener('DOMContentLoaded', initEditor);
+
+    // Main editor initialization
+    function initEditor() {
+        // Load subtitles
+        loadSubtitles();
+        
+        // Set up video player
+        setupVideoPlayer();
+        
+        // Set up timeline
+        setupTimeline();
+        
+        // Set up editor panels
+        setupSubtitleEditor();
+        setupImageOverlays();
+        setupStylingPanel();
+        
+        // Event listeners for global actions
+        document.getElementById('add-subtitle-btn').addEventListener('click', showNewSubtitleModal);
+        document.getElementById('create-subtitle-link').addEventListener('click', showNewSubtitleModal);
+        document.getElementById('save-all-btn').addEventListener('click', saveAllChanges);
+        document.getElementById('export-video-btn').addEventListener('click', showExportModal);
+        document.getElementById('start-export-btn').addEventListener('click', startExportProcess);
+        
+        // Set up modal handlers
+        setupNewSubtitleModal();
+    }
+
+    // Load subtitles from the server
+    function loadSubtitles() {
+        fetch(`/translation/api/projects/${projectId}/subtitles/`)
+            .then(response => response.json())
+            .then(subtitles => {
+                window.subtitles = subtitles;
+                renderSubtitleList(subtitles);
+                renderTimelineMarkers(subtitles);
+            })
+            .catch(error => {
+                console.error('Error loading subtitles:', error);
+                showToast('Error loading subtitles. Please refresh the page.', 'danger');
+            });
+    }
+
+    // Render the subtitle list in the sidebar
+    // Render the subtitle list in the sidebar
+    // Render the subtitle list in the sidebar
+    function renderSubtitleList(subtitles) {
+        const listContainer = document.getElementById('subtitle-list');
+        const translationMode = document.body.dataset.translationMode;
+        listContainer.innerHTML = '';
+        
+        if (subtitles.length === 0) {
+            listContainer.innerHTML = `
+                <div class="p-3 text-center text-muted">
+                    No subtitles found. Click "+" to add a new subtitle.
+                </div>
+            `;
+            return;
+        }
+        
+        subtitles.forEach(subtitle => {
+            const item = document.createElement('div');
+            item.className = 'subtitle-item';
+            item.dataset.id = subtitle.id;
+            
+            // Choose which text to display based on translation mode
+            let displayText;
+            if (translationMode === 'translate' && subtitle.translated_text) {
+                displayText = subtitle.translated_text;
+            } else {
+                displayText = subtitle.original_text;
+            }
+            
+            // Format with speaker if available
+            if (subtitle.speaker) {
+                displayText = `${subtitle.speaker}: "${displayText}"`;
+            }
+            
+            item.innerHTML = `
+                <div class="subtitle-time">
+                    ${formatTime(subtitle.start_time)} - ${formatTime(subtitle.end_time)}
+                </div>
+                <div class="subtitle-text">${displayText}</div>
+            `;
+            
+            item.addEventListener('click', () => {
+                selectSubtitle(subtitle.id);
+            });
+            
+            listContainer.appendChild(item);
+        });
+    }
+
+    // Set up video player and controls
+    function setupVideoPlayer() {
+        const video = document.getElementById('video-player');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const playPauseBtnAlt = document.getElementById('play-pause-btn-alt');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const jumpBackBtn = document.getElementById('jump-back-btn');
+        const jumpForwardBtn = document.getElementById('jump-forward-btn');
+        const prevSubtitleBtn = document.getElementById('prev-subtitle-btn');
+        const nextSubtitleBtn = document.getElementById('next-subtitle-btn');
+        const playbackSpeed = document.getElementById('playback-speed');
+        const currentTimeDisplay = document.getElementById('current-time-display');
+        const totalTimeDisplay = document.getElementById('total-time-display');
+        
+        // Play/Pause control
+        function togglePlayPause() {
+            if (video.paused) {
+                video.play();
+                playPauseBtn.innerHTML = '<i class="bi bi-pause-fill"></i>';
+                playPauseBtnAlt.innerHTML = '<i class="bi bi-pause-fill"></i> Pause';
+            } else {
+                video.pause();
+                playPauseBtn.innerHTML = '<i class="bi bi-play-fill"></i>';
+                playPauseBtnAlt.innerHTML = '<i class="bi bi-play-fill"></i> Play';
+            }
+        }
+        
+        playPauseBtn.addEventListener('click', togglePlayPause);
+        playPauseBtnAlt.addEventListener('click', togglePlayPause);
+        
+        // Fullscreen control
+        fullscreenBtn.addEventListener('click', () => {
+            if (video.requestFullscreen) {
+                video.requestFullscreen();
+            } else if (video.webkitRequestFullscreen) {
+                video.webkitRequestFullscreen();
+            } else if (video.msRequestFullscreen) {
+                video.msRequestFullscreen();
+            }
+        });
+        
+        // Jump controls
+        jumpBackBtn.addEventListener('click', () => {
+            video.currentTime = Math.max(0, video.currentTime - 1);
+        });
+        
+        jumpForwardBtn.addEventListener('click', () => {
+            video.currentTime = Math.min(video.duration, video.currentTime + 1);
+        });
+        
+        // Subtitle navigation
+        prevSubtitleBtn.addEventListener('click', navigateToPreviousSubtitle);
+        nextSubtitleBtn.addEventListener('click', navigateToNextSubtitle);
+        
+        // Playback speed
+        playbackSpeed.addEventListener('change', () => {
+            video.playbackRate = parseFloat(playbackSpeed.value);
+        });
+        
+        // Time updates
+        video.addEventListener('timeupdate', () => {
+            currentTimeDisplay.textContent = formatTime(video.currentTime);
+            updateTimelineMarker();
+            updateActiveSubtitle();
+        });
+        
+        video.addEventListener('loadedmetadata', () => {
+            totalTimeDisplay.textContent = formatTime(video.duration);
+            setupTimelineRuler(video.duration);
+        });
+    }
+
+    // Set up timeline visualization
+    function setupTimeline() {
+        const timeline = document.getElementById('timeline-markers');
+        const currentMarker = document.getElementById('timeline-current');
+        const video = document.getElementById('video-player');
+        
+        // Allow clicking on timeline to seek
+        timeline.addEventListener('click', (e) => {
+            const rect = timeline.getBoundingClientRect();
+            const clickPosition = (e.clientX - rect.left) / rect.width;
+            video.currentTime = video.duration * clickPosition;
+        });
+        
+        // Update current time marker
+        function updateTimeMarker() {
+            if (video.duration) {
+                const position = (video.currentTime / video.duration) * 100;
+                currentMarker.style.left = `${position}%`;
+            }
+        }
+        
+        video.addEventListener('timeupdate', updateTimeMarker);
+        
+        // Make timeline markers draggable
+        // This will be implemented when rendering the markers
+    }
+
+    // Set up timeline ruler with time markings
+    function setupTimelineRuler(duration) {
+        const ruler = document.getElementById('timeline-ruler');
+        ruler.innerHTML = '';
+        
+        // Determine appropriate interval based on duration
+        let interval = 5; // 5 second intervals by default
+        if (duration > 300) interval = 30; // 30 second intervals for videos over 5 minutes
+        else if (duration > 60) interval = 10; // 10 second intervals for videos over 1 minute
+        
+        // Add ticks and labels
+        for (let time = 0; time <= duration; time += interval) {
+            // Create tick mark
+            const tick = document.createElement('div');
+            tick.className = 'timeline-ruler-tick';
+            if (time % (interval * 6) === 0) tick.classList.add('major');
+            tick.style.left = `${(time / duration) * 100}%`;
+            ruler.appendChild(tick);
+            
+            // Add label for major ticks
+            if (time % (interval * 6) === 0) {
+                const label = document.createElement('div');
+                label.className = 'timeline-ruler-label';
+                label.textContent = formatTime(time);
+                label.style.left = `${(time / duration) * 100}%`;
+                ruler.appendChild(label);
+            }
+        }
+    }
+
+    // Render subtitle markers on the timeline
+    function renderTimelineMarkers(subtitles) {
+        const markers = document.getElementById('timeline-markers');
+        const video = document.getElementById('video-player');
+        
+        // Clear existing markers
+        markers.querySelectorAll('.timeline-segment').forEach(el => el.remove());
+        
+        // Wait for video metadata to be loaded
+        if (!video.duration && subtitles.length > 0) {
+            video.addEventListener('loadedmetadata', () => renderTimelineMarkers(subtitles));
+            return;
+        }
+        
+        // Add a marker for each subtitle
+        subtitles.forEach(subtitle => {
+            const marker = document.createElement('div');
+            marker.className = 'timeline-segment';
+            marker.dataset.id = subtitle.id;
+            
+            // Calculate position and width based on time
+            const start = (subtitle.start_time / video.duration) * 100;
+            const end = (subtitle.end_time / video.duration) * 100;
+            marker.style.left = `${start}%`;
+            marker.style.width = `${end - start}%`;
+            
+            // Add drag handles
+            // In the renderTimelineMarkers function, update the marker inner HTML
+            marker.innerHTML = `
+                <div class="handle handle-left" data-handle="left"></div>
+                <span class="segment-text">
+                    ${subtitle.speaker ? `${subtitle.speaker}: ` : ''}
+                    ${subtitle.original_text.substring(0, 15)}${subtitle.original_text.length > 15 ? '...' : ''}
+                </span>
+                <div class="handle handle-right" data-handle="right"></div>
+            `;
+            
+            // Click to select the subtitle
+            marker.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('handle')) {
+                    selectSubtitle(subtitle.id);
+                }
+            });
+            
+            // Make the marker draggable
+            setupDraggableMarker(marker, subtitle.id);
+            
+            markers.appendChild(marker);
+        });
+    }
+
+    // Setup draggable functionality for timeline markers
+    function setupDraggableMarker(marker, subtitleId) {
+        const video = document.getElementById('video-player');
+        let isDragging = false;
+        let isResizing = false;
+        let resizeHandle = null;
+        let startX = 0;
+        let originalLeft = 0;
+        let originalWidth = 0;
+        
+        // Handle main marker dragging
+        marker.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('handle')) {
+                // Handle resize
+                isResizing = true;
+                resizeHandle = e.target.dataset.handle;
+                startX = e.clientX;
+                originalLeft = parseFloat(marker.style.left);
+                originalWidth = parseFloat(marker.style.width);
+            } else {
+                // Handle drag
+                isDragging = true;
+                startX = e.clientX;
+                originalLeft = parseFloat(marker.style.left);
+            }
+            e.preventDefault();
+        });
+        
+        // Global mouse move handler
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging && !isResizing) return;
+            
+            const timeline = document.getElementById('timeline-markers');
+            const rect = timeline.getBoundingClientRect();
+            const totalWidth = rect.width;
+            
+            if (isDragging) {
+                // Calculate new position
+                const deltaX = e.clientX - startX;
+                const deltaPercent = (deltaX / totalWidth) * 100;
+                let newLeft = originalLeft + deltaPercent;
+                
+                // Constrain to timeline bounds
+                newLeft = Math.max(0, Math.min(100 - parseFloat(marker.style.width), newLeft));
+                
+                // Update marker position
+                marker.style.left = `${newLeft}%`;
+                
+                // Update subtitle times
+                const subtitle = window.subtitles.find(s => s.id == subtitleId);
+                if (subtitle) {
+                    const duration = video.duration;
+                    const startTime = (newLeft / 100) * duration;
+                    const endTime = startTime + ((parseFloat(marker.style.width) / 100) * duration);
+                    
+                    // Update the form if this subtitle is selected
+                    if (document.getElementById('subtitle-id').value == subtitleId) {
+                        document.getElementById('start-time').value = formatTime(startTime);
+                        document.getElementById('end-time').value = formatTime(endTime);
+                    }
+                    
+                    // Update the subtitle object
+                    subtitle.start_time = startTime;
+                    subtitle.end_time = endTime;
+                    
+                    // Mark as modified
+                    subtitle.modified = true;
+                }
+            } else if (isResizing) {
+                // Handle resizing
+                const deltaX = e.clientX - startX;
+                const deltaPercent = (deltaX / totalWidth) * 100;
+                
+                if (resizeHandle === 'left') {
+                    // Resize from left handle
+                    let newLeft = originalLeft + deltaPercent;
+                    let newWidth = originalWidth - deltaPercent;
+                    
+                    // Constraints
+                    newLeft = Math.max(0, newLeft);
+                    newWidth = Math.max(1, newWidth);
+                    
+                    if (newLeft < 100 && newWidth > 0) {
+                        marker.style.left = `${newLeft}%`;
+                        marker.style.width = `${newWidth}%`;
+                        
+                        // Update subtitle start time
+                        const subtitle = window.subtitles.find(s => s.id == subtitleId);
+                        if (subtitle) {
+                            const startTime = (newLeft / 100) * video.duration;
+                            subtitle.start_time = startTime;
+                            
+                            // Update form if selected
+                            if (document.getElementById('subtitle-id').value == subtitleId) {
+                                document.getElementById('start-time').value = formatTime(startTime);
+                            }
+                            
+                            // Mark as modified
+                            subtitle.modified = true;
+                        }
+                    }
+                } else if (resizeHandle === 'right') {
+                    // Resize from right handle
+                    let newWidth = originalWidth + deltaPercent;
+                    
+                    // Constraints
+                    newWidth = Math.max(1, Math.min(100 - originalLeft, newWidth));
+                    
+                    marker.style.width = `${newWidth}%`;
+                    
+                    // Update subtitle end time
+                    const subtitle = window.subtitles.find(s => s.id == subtitleId);
+                    if (subtitle) {
+                        const endTime = ((originalLeft + newWidth) / 100) * video.duration;
+                        subtitle.end_time = endTime;
+                        
+                        // Update form if selected
+                        if (document.getElementById('subtitle-id').value == subtitleId) {
+                            document.getElementById('end-time').value = formatTime(endTime);
+                        }
+                        
+                        // Mark as modified
+                        subtitle.modified = true;
+                    }
+                }
+            }
+        });
+        
+        // End drag or resize
+        document.addEventListener('mouseup', () => {
+            if (isDragging || isResizing) {
+                isDragging = false;
+                isResizing = false;
+            }
+        });
+    }
+
+    // Set up subtitle editor panel
+    function setupSubtitleEditor() {
+        const saveBtn = document.getElementById('save-subtitle-btn');
+        const deleteBtn = document.getElementById('delete-subtitle-btn');
+        const prevBtn = document.getElementById('prev-subtitle-edit-btn');
+        const nextBtn = document.getElementById('next-subtitle-edit-btn');
+        const setCurrentTimeBtn = document.getElementById('set-current-time');
+        
+        // Time input adjustments
+        document.getElementById('start-time-up').addEventListener('click', () => {
+            adjustTime('start-time', 0.1);
+        });
+        document.getElementById('start-time-down').addEventListener('click', () => {
+            adjustTime('start-time', -0.1);
+        });
+        document.getElementById('end-time-up').addEventListener('click', () => {
+            adjustTime('end-time', 0.1);
+        });
+        document.getElementById('end-time-down').addEventListener('click', () => {
+            adjustTime('end-time', -0.1);
+        });
+        
+        // Save button
+        saveBtn.addEventListener('click', saveSubtitle);
+        
+        // Delete button
+        deleteBtn.addEventListener('click', deleteSubtitle);
+        
+        // Navigation buttons
+        prevBtn.addEventListener('click', navigateToPreviousSubtitle);
+        nextBtn.addEventListener('click', navigateToNextSubtitle);
+        
+        // Set current time button
+        setCurrentTimeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const video = document.getElementById('video-player');
+            document.getElementById('start-time').value = formatTime(video.currentTime);
+            document.getElementById('end-time').value = formatTime(video.currentTime + 3); // Add 3 seconds by default
+        });
+    }
+
+    // Adjust time inputs with buttons
+    function adjustTime(inputId, delta) {
+        const input = document.getElementById(inputId);
+        const timeInSeconds = parseTimeToSeconds(input.value);
+        const newTime = Math.max(0, timeInSeconds + delta);
+        input.value = formatTime(newTime);
+        
+        // Update subtitle object if currently editing
+        const subtitleId = document.getElementById('subtitle-id').value;
+        if (subtitleId) {
+            const subtitle = window.subtitles.find(s => s.id == subtitleId);
+            if (subtitle) {
+                if (inputId === 'start-time') {
+                    subtitle.start_time = newTime;
+                } else {
+                    subtitle.end_time = newTime;
+                }
+                subtitle.modified = true;
+                
+                // Update timeline marker
+                updateTimelineMarker(subtitleId);
+            }
+        }
+    }
+
+    // Set up image overlay functionality
+    function setupImageOverlays() {
+        const addImageBtn = document.getElementById('add-image-btn');
+        const imageUpload = document.getElementById('image-upload');
+        
+        // Store image overlays in memory
+        window.imageOverlays = [];
+        
+        // Add image button
+        addImageBtn.addEventListener('click', () => {
+            if (!imageUpload.files.length) {
+                showToast('Please select an image file first', 'warning');
+                return;
+            }
+            
+            const file = imageUpload.files[0];
+            const startTime = parseTimeToSeconds(document.getElementById('image-start-time').value) || 0;
+            const endTime = parseTimeToSeconds(document.getElementById('image-end-time').value) || 5;
+            
+            // Create image overlay object
+            const imageId = Date.now(); // Simple unique ID
+            const imageOverlay = {
+                id: imageId,
+                file: file,
+                fileName: file.name,
+                startTime: startTime,
+                endTime: endTime,
+                x: 10, // Default position (percentage)
+                y: 10,
+                width: 30, // Default size (percentage)
+                height: 'auto'
+            };
+            
+            // Add to collection
+            window.imageOverlays.push(imageOverlay);
+            
+            // Create preview in list
+            renderImageOverlays();
+            
+            // Create on video
+            createImageOverlayElement(imageOverlay);
+            
+            // Clear form
+            imageUpload.value = '';
+            document.getElementById('image-start-time').value = '';
+            document.getElementById('image-end-time').value = '';
+            
+            showToast('Image added successfully', 'success');
+        });
+    }
+
+    // Render image overlays list
+    function renderImageOverlays() {
+        const container = document.getElementById('image-overlays-list');
+        
+        if (window.imageOverlays.length === 0) {
+            container.innerHTML = '<div class="alert alert-info">No images added yet</div>';
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        window.imageOverlays.forEach(overlay => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const item = document.createElement('div');
+                item.className = 'image-overlay-item';
+                item.innerHTML = `
+                    <img src="${e.target.result}" class="image-preview">
+                    <div class="mb-2">
+                        <small class="text-muted">${overlay.fileName}</small>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2">
+                        <small>${formatTime(overlay.startTime)} - ${formatTime(overlay.endTime)}</small>
+                        <button class="btn btn-sm btn-outline-danger remove-image" data-id="${overlay.id}">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Add remove button handler
+                item.querySelector('.remove-image').addEventListener('click', () => {
+                    removeImageOverlay(overlay.id);
+                });
+                
+                container.appendChild(item);
+            };
+            reader.readAsDataURL(overlay.file);
+        });
+    }
+
+    // Create image overlay element on video
+    function createImageOverlayElement(overlay) {
+        const container = document.getElementById('image-overlays-container');
+        const reader = new FileReader();
+        
+        reader.onload = function(e) {
+            const imageEl = document.createElement('div');
+            imageEl.className = 'image-overlay editable';
+            imageEl.dataset.id = overlay.id;
+            imageEl.style.display = 'none'; // Initially hidden
+            
+            imageEl.innerHTML = `
+                <img src="${e.target.result}" style="width: 100%; height: 100%; object-fit: contain;">
+                <div class="resize-handle resize-handle-nw"></div>
+                <div class="resize-handle resize-handle-ne"></div>
+                <div class="resize-handle resize-handle-sw"></div>
+                <div class="resize-handle resize-handle-se"></div>
+            `;
+            
+            // Set position and size
+            imageEl.style.left = `${overlay.x}%`;
+            imageEl.style.top = `${overlay.y}%`;
+            imageEl.style.width = `${overlay.width}%`;
+            if (overlay.height !== 'auto') {
+                imageEl.style.height = `${overlay.height}%`;
+            }
+            
+            // Make draggable
+            makeImageDraggable(imageEl);
+            
+            container.appendChild(imageEl);
+        };
+        
+        reader.readAsDataURL(overlay.file);
+    }
+
+    // Make image overlay draggable and resizable
+    function makeImageDraggable(el) {
+        let isDragging = false;
+        let isResizing = false;
+        let resizeHandle = null;
+        let startX = 0;
+        let startY = 0;
+        let startLeft = 0;
+        let startTop = 0;
+        let startWidth = 0;
+        let startHeight = 0;
+        
+        // Drag handlers
+        el.addEventListener('mousedown', (e) => {
+            if (e.target.classList.contains('resize-handle')) {
+                // Handle resize
+                isResizing = true;
+                resizeHandle = e.target.className.includes('nw') ? 'nw' : 
+                              e.target.className.includes('ne') ? 'ne' :
+                              e.target.className.includes('sw') ? 'sw' : 'se';
+                
+                startX = e.clientX;
+                startY = e.clientY;
+                startLeft = parseFloat(el.style.left);
+                startTop = parseFloat(el.style.top);
+                startWidth = el.offsetWidth;
+                startHeight = el.offsetHeight;
+                
+                e.preventDefault();
+            } else {
+                // Handle drag
+                isDragging = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                startLeft = parseFloat(el.style.left);
+                startTop = parseFloat(el.style.top);
+                
+                e.preventDefault();
+            }
+        });
+        
+        // Global mouse move handler
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging && !isResizing) return;
+            
+            const container = document.getElementById('image-overlays-container');
+            const rect = container.getBoundingClientRect();
+            
+            if (isDragging) {
+                // Calculate new position in percentage
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+                
+                const deltaXPercent = (deltaX / rect.width) * 100;
+                const deltaYPercent = (deltaY / rect.height) * 100;
+                
+                let newLeft = startLeft + deltaXPercent;
+                let newTop = startTop + deltaYPercent;
+                
+                // Constrain to container
+                newLeft = Math.max(0, Math.min(100 - parseFloat(el.style.width), newLeft));
+                newTop = Math.max(0, Math.min(100 - (el.offsetHeight / rect.height * 100), newTop));
+                
+                // Update position
+                el.style.left = `${newLeft}%`;
+                el.style.top = `${newTop}%`;
+                
+                // Update overlay object
+                const overlayId = el.dataset.id;
+                const overlay = window.imageOverlays.find(o => o.id == overlayId);
+                if (overlay) {
+                    overlay.x = newLeft;
+                    overlay.y = newTop;
+                }
+            } else if (isResizing) {
+                // Calculate new dimensions
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+                
+                const deltaXPercent = (deltaX / rect.width) * 100;
+                const deltaYPercent = (deltaY / rect.height) * 100;
+                
+                let newWidth, newHeight, newLeft, newTop;
+                
+                // Handle different resize handles
+                if (resizeHandle === 'se') {
+                    // Bottom right
+                    newWidth = startWidth + deltaX;
+                    newHeight = startHeight + deltaY;
+                    newLeft = startLeft;
+                    newTop = startTop;
+                } else if (resizeHandle === 'sw') {
+                    // Bottom left
+                    newWidth = startWidth - deltaX;
+                    newHeight = startHeight + deltaY;
+                    newLeft = startLeft + deltaXPercent;
+                    newTop = startTop;
+                } else if (resizeHandle === 'ne') {
+                    // Top right
+                    newWidth = startWidth + deltaX;
+                    newHeight = startHeight - deltaY;
+                    newLeft = startLeft;
+                    newTop = startTop + deltaYPercent;
+                } else if (resizeHandle === 'nw') {
+                    // Top left
+                    newWidth = startWidth - deltaX;
+                    newHeight = startHeight - deltaY;
+                    newLeft = startLeft + deltaXPercent;
+                    newTop = startTop + deltaYPercent;
+                }
+                
+                // Convert to percentages
+                const newWidthPercent = (newWidth / rect.width) * 100;
+                const newHeightPercent = (newHeight / rect.height) * 100;
+                
+                // Apply constraints
+                newWidthPercent = Math.max(5, Math.min(100, newWidthPercent));
+                newHeightPercent = Math.max(5, Math.min(100, newHeightPercent));
+                newLeft = Math.max(0, Math.min(100 - newWidthPercent, newLeft));
+                newTop = Math.max(0, Math.min(100 - newHeightPercent, newTop));
+                
+                // Update element
+                el.style.width = `${newWidthPercent}%`;
+                el.style.height = `${newHeightPercent}%`;
+                el.style.left = `${newLeft}%`;
+                el.style.top = `${newTop}%`;
+                
+                // Update overlay object
+                const overlayId = el.dataset.id;
+                const overlay = window.imageOverlays.find(o => o.id == overlayId);
+                if (overlay) {
+                    overlay.width = newWidthPercent;
+                    overlay.height = newHeightPercent;
+                    overlay.x = newLeft;
+                    overlay.y = newTop;
+                }
+            }
+        });
+        
+        // End drag/resize
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+            isResizing = false;
+        });
+    }
+
+    // Remove image overlay
+    function removeImageOverlay(id) {
+        // Remove from memory
+        window.imageOverlays = window.imageOverlays.filter(overlay => overlay.id != id);
+        
+        // Remove from DOM
+        const element = document.querySelector(`.image-overlay[data-id="${id}"]`);
+        if (element) element.remove();
+        
+        // Update list
+        renderImageOverlays();
+        
+        showToast('Image removed', 'success');
+    }
+
+    // Set up styling panel
+    function setupStylingPanel() {
+        const fontFamily = document.getElementById('font-family');
+        const fontSize = document.getElementById('font-size');
+        const fontSizeValue = document.getElementById('font-size-value');
+        const btnBold = document.getElementById('btn-bold');
+        const btnItalic = document.getElementById('btn-italic');
+        const btnUnderline = document.getElementById('btn-underline');
+        const alignLeft = document.getElementById('align-left');
+        const alignCenter = document.getElementById('align-center');
+        const alignRight = document.getElementById('align-right');
+        const textColor = document.getElementById('text-color');
+        const bgColor = document.getElementById('bg-color');
+        const bgOpacity = document.getElementById('bg-opacity');
+        const opacityValue = document.getElementById('opacity-value');
+        const applyToAllBtn = document.getElementById('apply-style-all');
+        
+        // Font size slider
+        fontSize.addEventListener('input', () => {
+            fontSizeValue.textContent = `${fontSize.value}px`;
+            updateSubtitleStyle();
+        });
+        
+        // Background opacity slider
+        bgOpacity.addEventListener('input', () => {
+            opacityValue.textContent = `${Math.round(bgOpacity.value * 100)}%`;
+            updateSubtitleStyle();
+        });
+        
+        // Style buttons
+        btnBold.addEventListener('click', () => {
+            btnBold.classList.toggle('active');
+            updateSubtitleStyle();
+        });
+        
+        btnItalic.addEventListener('click', () => {
+            btnItalic.classList.toggle('active');
+            updateSubtitleStyle();
+        });
+        
+        btnUnderline.addEventListener('click', () => {
+            btnUnderline.classList.toggle('active');
+            updateSubtitleStyle();
+        });
+        
+        // Alignment buttons
+        [alignLeft, alignCenter, alignRight].forEach(btn => {
+            btn.addEventListener('click', () => {
+                [alignLeft, alignCenter, alignRight].forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                updateSubtitleStyle();
+            });
+        });
+        
+        // Color pickers
+        [textColor, bgColor].forEach(picker => {
+            picker.addEventListener('input', updateSubtitleStyle);
+        });
+        
+        // Font family
+        fontFamily.addEventListener('change', updateSubtitleStyle);
+        
+        // Apply to all button
+        applyToAllBtn.addEventListener('click', applyStyleToAllSubtitles);
+    }
+
+    // Update subtitle style based on styling panel
+    function updateSubtitleStyle() {
+        const subtitleId = document.getElementById('subtitle-id').value;
+        if (!subtitleId) return;
+        
+        const subtitle = window.subtitles.find(s => s.id == subtitleId);
+        if (!subtitle) return;
+        
+        // Get style values
+        const fontFamily = document.getElementById('font-family').value;
+        const fontSize = document.getElementById('font-size').value;
+        const isBold = document.getElementById('btn-bold').classList.contains('active');
+        const isItalic = document.getElementById('btn-italic').classList.contains('active');
+        const isUnderline = document.getElementById('btn-underline').classList.contains('active');
+        let alignment = 'center';
+        if (document.getElementById('align-left').classList.contains('active')) alignment = 'left';
+        if (document.getElementById('align-right').classList.contains('active')) alignment = 'right';
+        const textColor = document.getElementById('text-color').value;
+        const bgColor = document.getElementById('bg-color').value;
+        const bgOpacity = document.getElementById('bg-opacity').value;
+        
+        // Update subtitle object
+        subtitle.font_family = fontFamily;
+        subtitle.font_size = parseInt(fontSize);
+        subtitle.font_color = textColor;
+        subtitle.background_color = bgColor;
+        subtitle.background_opacity = parseFloat(bgOpacity);
+        subtitle.is_bold = isBold;
+        subtitle.is_italic = isItalic;
+        subtitle.is_underline = isUnderline;
+        subtitle.alignment = alignment;
+        
+        // Mark as modified
+        subtitle.modified = true;
+        
+        // Update preview
+        updateSubtitleDisplay();
+    }
+
+    // Apply current style to all subtitles
+    function applyStyleToAllSubtitles() {
+        // Get current style
+        const fontFamily = document.getElementById('font-family').value;
+        const fontSize = document.getElementById('font-size').value;
+        const isBold = document.getElementById('btn-bold').classList.contains('active');
+        const isItalic = document.getElementById('btn-italic').classList.contains('active');
+        const isUnderline = document.getElementById('btn-underline').classList.contains('active');
+        let alignment = 'center';
+        if (document.getElementById('align-left').classList.contains('active')) alignment = 'left';
+        if (document.getElementById('align-right').classList.contains('active')) alignment = 'right';
+        const textColor = document.getElementById('text-color').value;
+        const bgColor = document.getElementById('bg-color').value;
+        const bgOpacity = document.getElementById('bg-opacity').value;
+        
+        // Apply to all subtitles
+        window.subtitles.forEach(subtitle => {
+            subtitle.font_family = fontFamily;
+            subtitle.font_size = parseInt(fontSize);
+            subtitle.font_color = textColor;
+            subtitle.background_color = bgColor;
+            subtitle.background_opacity = parseFloat(bgOpacity);
+            subtitle.is_bold = isBold;
+            subtitle.is_italic = isItalic;
+            subtitle.is_underline = isUnderline;
+            subtitle.alignment = alignment;
+            
+            // Mark as modified
+            subtitle.modified = true;
+        });
+        
+        showToast('Style applied to all subtitles', 'success');
+        
+        // Update display if a subtitle is currently active
+        updateSubtitleDisplay();
+    }
+
+    // Setup new subtitle modal
+    function setupNewSubtitleModal() {
+        const modal = new bootstrap.Modal(document.getElementById('new-subtitle-modal'));
+        const createBtn = document.getElementById('create-subtitle-btn');
+        const setCurrentTimeBtn = document.getElementById('set-new-current-time');
+        
+        // Set current time button
+        setCurrentTimeBtn.addEventListener('click', () => {
+            const video = document.getElementById('video-player');
+            document.getElementById('new-start-time').value = formatTime(video.currentTime);
+            document.getElementById('new-end-time').value = formatTime(video.currentTime + 3);
+        });
+        
+        // Create button
+        createBtn.addEventListener('click', () => {
+            // Get form values
+            const startTime = parseTimeToSeconds(document.getElementById('new-start-time').value);
+            const endTime = parseTimeToSeconds(document.getElementById('new-end-time').value);
+            const speaker = document.getElementById('new-subtitle-speaker').value.trim();
+            const text = document.getElementById('new-subtitle-text').value.trim();
+            const translation = document.getElementById('new-subtitle-translation') ? 
+                               document.getElementById('new-subtitle-translation').value.trim() : '';
+            
+            // Validate
+            if (startTime >= endTime) {
+                showToast('End time must be after start time', 'danger');
+                return;
+            }
+            
+            if (!text) {
+                showToast('Subtitle text is required', 'danger');
+                return;
+            }
+            
+            // Generate a temporary ID (negative to avoid conflicts with server IDs)
+            const tempId = -Math.floor(Math.random() * 10000) - 1;
+            
+            // Find next sequence number
+            let sequence = 1;
+            if (window.subtitles.length > 0) {
+                // Sort by start time
+                const sorted = [...window.subtitles].sort((a, b) => a.start_time - b.start_time);
+                sequence = sorted[sorted.length - 1].sequence + 1;
+            }
+            
+            // Create new subtitle object
+            const newSubtitle = {
+                id: tempId,
+                sequence: sequence,
+                start_time: startTime,
+                end_time: endTime,
+                original_text: text,
+                translated_text: translation,
+                speaker: speaker,
+                font_family: 'Arial',
+                font_size: 16,
+                font_color: '#FFFFFF',
+                background_color: '#000000',
+                background_opacity: 0.5,
+                is_bold: false,
+                is_italic: false,
+                is_underline: false,
+                alignment: 'center',
+                isNew: true
+            };
+            
+            // Add to subtitles array
+            window.subtitles.push(newSubtitle);
+            
+            // Update UI
+            renderSubtitleList(window.subtitles);
+            renderTimelineMarkers(window.subtitles);
+            
+            // Select the new subtitle
+            selectSubtitle(tempId);
+            
+            // Close modal and reset form
+            modal.hide();
+            document.getElementById('new-start-time').value = '';
+            document.getElementById('new-end-time').value = '';
+            document.getElementById('new-subtitle-speaker').value = '';
+            document.getElementById('new-subtitle-text').value = '';
+            if (document.getElementById('new-subtitle-translation')) {
+                document.getElementById('new-subtitle-translation').value = '';
+            }
+            
+            showToast('New subtitle created', 'success');
+        });
+    }
+
+    // Show new subtitle modal
+    function showNewSubtitleModal() {
+        const modal = new bootstrap.Modal(document.getElementById('new-subtitle-modal'));
+        
+        // If video is playing, set current time as default
+        const video = document.getElementById('video-player');
+        document.getElementById('new-start-time').value = formatTime(video.currentTime);
+        document.getElementById('new-end-time').value = formatTime(video.currentTime + 3);
+        
+        modal.show();
+    }
+
+    // Select a subtitle for editing
+    function selectSubtitle(id) {
+        const subtitle = window.subtitles.find(s => s.id == id);
+        if (!subtitle) return;
+        
+        // Update UI
+        document.getElementById('no-subtitle-selected').style.display = 'none';
+        document.getElementById('subtitle-editor-form').style.display = 'block';
+        
+        // Fill form with subtitle data
+        document.getElementById('subtitle-id').value = subtitle.id;
+        document.getElementById('subtitle-sequence').value = subtitle.sequence;
+        document.getElementById('start-time').value = formatTime(subtitle.start_time);
+        document.getElementById('end-time').value = formatTime(subtitle.end_time);
+        document.getElementById('subtitle-speaker').value = subtitle.speaker || '';
+        document.getElementById('subtitle-text').value = subtitle.original_text;
+        
+        if (document.getElementById('subtitle-translation')) {
+            document.getElementById('subtitle-translation').value = subtitle.translated_text || '';
+        }
+        
+        // Update styling controls
+        document.getElementById('font-family').value = subtitle.font_family;
+        document.getElementById('font-size').value = subtitle.font_size;
+        document.getElementById('font-size-value').textContent = `${subtitle.font_size}px`;
+        document.getElementById('text-color').value = subtitle.font_color;
+        document.getElementById('bg-color').value = subtitle.background_color;
+        document.getElementById('bg-opacity').value = subtitle.background_opacity;
+        document.getElementById('opacity-value').textContent = `${Math.round(subtitle.background_opacity * 100)}%`;
+        
+        // Style buttons
+        document.getElementById('btn-bold').classList.toggle('active', subtitle.is_bold);
+        document.getElementById('btn-italic').classList.toggle('active', subtitle.is_italic);
+        document.getElementById('btn-underline').classList.toggle('active', subtitle.is_underline);
+        
+        // Alignment
+        document.getElementById('align-left').classList.toggle('active', subtitle.alignment === 'left');
+        document.getElementById('align-center').classList.toggle('active', subtitle.alignment === 'center');
+        document.getElementById('align-right').classList.toggle('active', subtitle.alignment === 'right');
+        
+        // Highlight in list
+        document.querySelectorAll('.subtitle-item').forEach(item => {
+            item.classList.toggle('active', item.dataset.id == id);
+        });
+        
+        // Highlight in timeline
+        document.querySelectorAll('.timeline-segment').forEach(segment => {
+            segment.classList.toggle('active', segment.dataset.id == id);
+        });
+        
+        // Seek to subtitle in video
+        const video = document.getElementById('video-player');
+        video.currentTime = subtitle.start_time;
+        
+        // Update subtitle display
+        updateSubtitleDisplay();
+    }
+
+    // Save current subtitle changes
+    function saveSubtitle() {
+        const id = document.getElementById('subtitle-id').value;
+        if (!id) return;
+        
+        const subtitle = window.subtitles.find(s => s.id == id);
+        if (!subtitle) return;
+        
+        // Get form values
+        const startTime = parseTimeToSeconds(document.getElementById('start-time').value);
+        const endTime = parseTimeToSeconds(document.getElementById('end-time').value);
+        const speaker = document.getElementById('subtitle-speaker').value.trim();
+        const text = document.getElementById('subtitle-text').value.trim();
+        const translation = document.getElementById('subtitle-translation') ? 
+                           document.getElementById('subtitle-translation').value.trim() : subtitle.translated_text;
+        
+        // Validate
+        if (startTime >= endTime) {
+            showToast('End time must be after start time', 'danger');
+            return;
+        }
+        
+        if (!text) {
+            showToast('Subtitle text is required', 'danger');
+            return;
+        }
+        
+        // Update subtitle object
+        subtitle.start_time = startTime;
+        subtitle.end_time = endTime;
+        subtitle.speaker = speaker;
+        subtitle.original_text = text;
+        subtitle.translated_text = translation;
+        
+        // Mark as modified
+        subtitle.modified = true;
+        
+        // Update UI
+        renderSubtitleList(window.subtitles);
+        renderTimelineMarkers(window.subtitles);
+        selectSubtitle(id); // Re-select to update UI
+        
+        showToast('Subtitle updated', 'success');
+    }
+
+    // Delete the current subtitle
+    function deleteSubtitle() {
+        const id = document.getElementById('subtitle-id').value;
+        if (!id) return;
+        
+        if (!confirm('Are you sure you want to delete this subtitle?')) {
+            return;
+        }
+        
+        // Find the subtitle
+        const index = window.subtitles.findIndex(s => s.id == id);
+        if (index === -1) return;
+        
+        // Store for API deletion if it's a server-side subtitle
+        if (!window.subtitles[index].isNew) {
+            if (!window.deletedSubtitles) window.deletedSubtitles = [];
+            window.deletedSubtitles.push(window.subtitles[index].id);
+        }
+        
+        // Remove from array
+        window.subtitles.splice(index, 1);
+        
+        // Update UI
+        renderSubtitleList(window.subtitles);
+        renderTimelineMarkers(window.subtitles);
+        
+        // Clear editor
+        document.getElementById('no-subtitle-selected').style.display = 'block';
+        document.getElementById('subtitle-editor-form').style.display = 'none';
+        
+        showToast('Subtitle deleted', 'success');
+        
+        // Select previous subtitle if available
+        if (window.subtitles.length > 0) {
+            // Find nearby subtitle
+            let nextIndex = Math.min(index, window.subtitles.length - 1);
+            selectSubtitle(window.subtitles[nextIndex].id);
+        }
+    }
+
+    // Navigate to previous subtitle
+    function navigateToPreviousSubtitle() {
+        const currentId = document.getElementById('subtitle-id').value;
+        if (!currentId) {
+            // If no subtitle selected, select the first one
+            if (window.subtitles.length > 0) {
+                selectSubtitle(window.subtitles[0].id);
+            }
+            return;
+        }
+        
+        // Find current subtitle index
+        const index = window.subtitles.findIndex(s => s.id == currentId);
+        if (index <= 0) return; // Already at first subtitle
+        
+        // Select previous subtitle
+        selectSubtitle(window.subtitles[index - 1].id);
+    }
+
+    // Navigate to next subtitle
+    function navigateToNextSubtitle() {
+        const currentId = document.getElementById('subtitle-id').value;
+        if (!currentId) {
+            // If no subtitle selected, select the first one
+            if (window.subtitles.length > 0) {
+                selectSubtitle(window.subtitles[0].id);
+            }
+            return;
+        }
+        
+        // Find current subtitle index
+        const index = window.subtitles.findIndex(s => s.id == currentId);
+        if (index === -1 || index >= window.subtitles.length - 1) return; // Already at last subtitle
+        
+        // Select next subtitle
+        selectSubtitle(window.subtitles[index + 1].id);
+    }
+
+    // Update subtitle display while playing video
+    // Update subtitle display while playing video
+function updateSubtitleDisplay() {
+    const video = document.getElementById('video-player');
+    const display = document.getElementById('subtitle-display');
+    const currentTime = video.currentTime;
+    const translationMode = document.body.dataset.translationMode;
+    
+    // Find subtitle that should be displayed
+    const activeSubtitle = window.subtitles.find(s => 
+        currentTime >= s.start_time && currentTime <= s.end_time
+    );
+    
+    if (activeSubtitle) {
+        // Determine which text to show based on project settings
+        let text;
+        
+        // If in translation mode, show the translated text
+        if (translationMode === 'translate' && activeSubtitle.translated_text) {
+            text = activeSubtitle.translated_text;
+        } else {
+            text = activeSubtitle.original_text;
+        }
+        
+        // Format speaker with text
+        if (activeSubtitle.speaker) {
+            text = `${activeSubtitle.speaker}: "${text}"`;
+        }
+        
+        // Apply styling
+        const style = `
+            font-family: ${activeSubtitle.font_family};
+            font-size: ${activeSubtitle.font_size}px;
+            color: ${activeSubtitle.font_color};
+            background-color: ${hexToRgba(activeSubtitle.background_color, activeSubtitle.background_opacity)};
+            font-weight: ${activeSubtitle.is_bold ? 'bold' : 'normal'};
+            font-style: ${activeSubtitle.is_italic ? 'italic' : 'normal'};
+            text-decoration: ${activeSubtitle.is_underline ? 'underline' : 'none'};
+            text-align: ${activeSubtitle.alignment};
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 4px;
+            max-width: 80%;
+        `;
+        
+        display.innerHTML = `<div style="${style}">${text}</div>`;
+        display.style.display = 'block';
+    } else {
+        display.style.display = 'none';
+    }
+}
+
+    // Update active subtitle based on current video time
+    function updateActiveSubtitle() {
+        const video = document.getElementById('video-player');
+        const currentTime = video.currentTime;
+        
+        // Update image overlays visibility
+        updateImageOverlays(currentTime);
+        
+        // Find subtitle that matches current time
+        const activeSubtitle = window.subtitles.find(s => 
+            currentTime >= s.start_time && currentTime <= s.end_time
+        );
+        
+        if (activeSubtitle) {
+            // Update subtitle display
+            updateSubtitleDisplay();
+            
+            // Highlight in sidebar and timeline (but don't select for editing)
+            document.querySelectorAll('.subtitle-item').forEach(item => {
+                if (item.dataset.id == activeSubtitle.id) {
+                    item.classList.add('active');
+                    // Scroll into view if needed
+                    const list = document.getElementById('subtitle-list');
+                    const itemPos = item.offsetTop;
+                    const listHeight = list.clientHeight;
+                    const scrollPos = list.scrollTop;
+                    
+                    if (itemPos < scrollPos || itemPos > scrollPos + listHeight) {
+                        list.scrollTop = itemPos - listHeight / 2;
+                    }
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+            
+            // Highlight in timeline
+            document.querySelectorAll('.timeline-segment').forEach(segment => {
+                segment.classList.toggle('active', segment.dataset.id == activeSubtitle.id);
+            });
+        } else {
+            document.getElementById('subtitle-display').style.display = 'none';
+        }
+    }
+
+    // Update image overlays based on current time
+    function updateImageOverlays(currentTime) {
+        if (!window.imageOverlays) return;
+        
+        window.imageOverlays.forEach(overlay => {
+            const element = document.querySelector(`.image-overlay[data-id="${overlay.id}"]`);
+            if (!element) return;
+            
+            // Show/hide based on time
+            if (currentTime >= overlay.startTime && currentTime <= overlay.endTime) {
+                element.style.display = 'block';
+            } else {
+                element.style.display = 'none';
+            }
+        });
+    }
+
+    // Update timeline current time marker
+    function updateTimelineMarker() {
+        const video = document.getElementById('video-player');
+        const marker = document.getElementById('timeline-current');
+        
+        if (video.duration) {
+            const position = (video.currentTime / video.duration) * 100;
+            marker.style.left = `${position}%`;
+        }
+    }
+
+    // Save all changes to the server
+    function saveAllChanges() {
+        // Collect all modified subtitles
+        const modifiedSubtitles = window.subtitles.filter(s => s.modified || s.isNew);
+        
+        if (modifiedSubtitles.length === 0 && (!window.deletedSubtitles || window.deletedSubtitles.length === 0)) {
+            showToast('No changes to save', 'info');
+            return;
+        }
+        
+        // Show saving indicator
+        showToast('Saving changes...', 'info');
+        
+        // Prepare data for API
+        const data = {
+            subtitles: modifiedSubtitles.map(s => ({
+                id: s.id,
+                sequence: s.sequence,
+                start_time: s.start_time,
+                end_time: s.end_time,
+                original_text: s.original_text,
+                translated_text: s.translated_text,
+                speaker: s.speaker,
+                font_family: s.font_family,
+                font_size: s.font_size,
+                font_color: s.font_color,
+                background_color: s.background_color,
+                background_opacity: s.background_opacity,
+                is_bold: s.is_bold,
+                is_italic: s.is_italic,
+                is_underline: s.is_underline,
+                alignment: s.alignment,
+                isNew: s.isNew || false
+            })),
+            deleted: window.deletedSubtitles || []
+        };
+        
+        // Send to server
+        fetch(`/translation/api/projects/${projectId}/save-all-subtitles/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success') {
+                showToast('All changes saved successfully', 'success');
+                
+                // Reset modified flags
+                window.subtitles.forEach(s => {
+                    s.modified = false;
+                    s.isNew = false;
+                });
+                
+                // Clear deleted list
+                window.deletedSubtitles = [];
+                
+                // Reload subtitles to get server IDs for new items
+                loadSubtitles();
+            } else {
+                showToast(`Error: ${result.message}`, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error saving changes:', error);
+            showToast('Error saving changes', 'danger');
+        });
+    }
+
+    // Show export modal
+    function showExportModal() {
+        const modal = new bootstrap.Modal(document.getElementById('export-modal'));
+        
+        // Reset form
+        document.getElementById('export-subtitle-lang').value = 'original';
+        document.getElementById('export-font-size').value = '24';
+        document.getElementById('export-font-size-value').textContent = '24px';
+        document.getElementById('export-font-color').value = '#FFFFFF';
+        document.getElementById('include-images').checked = true;
+        
+        // Update font size display
+        document.getElementById('export-font-size').addEventListener('input', function() {
+            document.getElementById('export-font-size-value').textContent = `${this.value}px`;
+        });
+        
+        modal.show();
+    }
+
+    // Start export process
+    function startExportProcess() {
+        // Get export options
+        const subtitleLang = document.getElementById('export-subtitle-lang').value;
+        const fontSize = document.getElementById('export-font-size').value;
+        const fontColor = document.getElementById('export-font-color').value;
+        const includeImages = document.getElementById('include-images').checked;
+        
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('export-modal')).hide();
+        
+        // Show loading indicator
+        showToast('Starting export process...', 'info');
+        
+        // First save all changes
+        saveAllChanges();
+        
+        // Then redirect to export URL
+        setTimeout(() => {
+            window.location.href = `/translation/projects/${projectId}/direct-download/?subtitle_language=${subtitleLang}&font_size=${fontSize}&font_color=${encodeURIComponent(fontColor)}&include_images=${includeImages}`;
+        }, 1000);
+    }
+
+    // Utility function to format time as MM:SS.ms
+    function formatTime(seconds) {
+        if (isNaN(seconds)) return '00:00.000';
+        
+        const min = Math.floor(seconds / 60);
+        const sec = Math.floor(seconds % 60);
+        const ms = Math.floor((seconds % 1) * 1000);
+        
+        return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+    }
+
+    // Parse time string to seconds
+    function parseTimeToSeconds(timeStr) {
+        if (!timeStr) return 0;
+        
+        // Handle different formats: MM:SS.ms or MM:SS:ms
+        const parts = timeStr.replace(',', '.').split(/[:.]/);
+        
+        if (parts.length === 3) {
+            // MM:SS.ms format
+            const min = parseInt(parts[0]) || 0;
+            const sec = parseInt(parts[1]) || 0;
+            const ms = parseInt(parts[2]) || 0;
+            
+            return min * 60 + sec + ms / 1000;
+        } else if (parts.length === 2) {
+            // MM:SS format
+            const min = parseInt(parts[0]) || 0;
+            const sec = parseInt(parts[1]) || 0;
+            
+            return min * 60 + sec;
+        }
+        
+        return parseFloat(timeStr) || 0;
+    }
+
+    // Convert hex color to rgba
+    function hexToRgba(hex, alpha) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    // Show toast notification
+    function showToast(message, type = 'info') {
+        const toastContainer = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = `toast show bg-${type} text-white`;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        
+        toast.innerHTML = `
+            <div class="toast-header bg-${type} text-white">
+                <strong class="me-auto">Video Editor</strong>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                ${message}
+            </div>
+        `;
+        
+        toastContainer.appendChild(toast);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                toast.remove();
+            }, 300);
+        }, 5000);
+    }
+</script>
+{% endblock %}

@@ -1,6 +1,7 @@
 """Production settings."""
 import os
 import dj_database_url
+from .base import *  # This must be the first line
 
 DEBUG = False
 SECRET_KEY = os.environ.get('SECRET_KEY')

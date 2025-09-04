@@ -1,0 +1,182 @@
+import time
+import logging
+from django.conf import settings
+from .file_utils import extract_text_from_file
+
+logger = logging.getLogger(__name__)
+
+class ContentFilterService:
+    """Service to check for sensitive content."""
+    
+    @staticmethod
+    def check_sensitive_content(text):
+        """
+        Check if the text contains sensitive content
+        Returns tuple (is_sensitive, details)
+        """
+        # Basic implementation - for a production system, use a more robust solution
+        sensitive_keywords = ['password', 'credit card', 'social security', 'passport', 'id number']
+        
+        found_keywords = [keyword for keyword in sensitive_keywords if keyword in text.lower()]
+        is_sensitive = len(found_keywords) > 0
+        
+        return is_sensitive, found_keywords
+
+
+class LLMService:
+    """Base service for LLM interactions."""
+    
+    def __init__(self):
+        pass
+    
+    def generate_response(self, provider, model_id, prompt, conversation_id=None, file_path=None, file_type=None):
+        """Generate response using the appropriate LLM provider."""
+        start_time = time.time()
+        
+        try:
+            # Process file if provided
+            file_content = ""
+            if file_path and file_type:
+                file_content = extract_text_from_file(file_path, file_type)
+                if file_content:
+                    prompt = f"Here is a file I'm attaching:\n\n{file_content}\n\nMy question about this content: {prompt}"
+            
+            # Get conversation history if provided
+            conversation_history = []
+            if conversation_id:
+                from askme.models import Question
+                questions = Question.objects.filter(conversation_id=conversation_id).order_by('sequence')
+                
+                for q in questions:
+                    if q.content == prompt:  # Skip the current question
+                        continue
+                    
+                    # Include file content from previous questions if available
+                    q_content = q.content
+                    if q.file and q.file_type:
+                        # Don't re-process files for history, just mention they were there
+                        q_content = f"[Question with {q.file_type.upper()} file attachment]: {q.content}"
+                    
+                    conversation_history.append({"role": "user", "content": q_content})
+                    if hasattr(q, 'response'):
+                        conversation_history.append({"role": "assistant", "content": q.response.content})
+            
+            # Add current prompt
+            messages = conversation_history + [{"role": "user", "content": prompt}]
+            
+            # Choose provider
+            if provider.lower() == 'anthropic':
+                response = self._generate_anthropic(model_id, messages)
+            elif provider.lower() == 'openai':
+                response = self._generate_openai(model_id, messages)
+            elif provider.lower() == 'deepseek':
+                response = self._generate_deepseek(model_id, messages)
+            elif provider.lower() == 'mock':
+                # Mock provider for development/testing
+                history_summary = f" (with {len(conversation_history)//2} previous exchanges)" if conversation_history else ""
+                file_summary = " with file attachment" if file_path else ""
+                response = f"This is a mock response to: '{prompt[:30]}...'{history_summary}{file_summary}"
+            else:
+                raise ValueError(f"Unsupported provider: {provider}")
+                
+            processing_time = time.time() - start_time
+                
+            return {
+                'content': response,
+                'processing_time': processing_time,
+                'success': True
+            }
+        except Exception as e:
+            logger.error(f"Error generating response: {str(e)}")
+            return {
+                'content': None,
+                'processing_time': time.time() - start_time,
+                'success': False,
+                'error': str(e)
+            }
+    
+    def _generate_anthropic(self, model_id, messages):
+        """Generate response using Anthropic Claude."""
+        try:
+            import anthropic
+            client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+            
+            # Convert to Anthropic format
+            response = client.messages.create(
+                model=model_id,
+                max_tokens=1000,
+                messages=messages
+            )
+            
+            return response.content[0].text
+        except ImportError:
+            logger.warning("Anthropic SDK not installed. Using mock response.")
+            return f"[Mock Anthropic Response] Would respond to conversation with {len(messages)} messages"
+        except Exception as e:
+            logger.error(f"Error with Anthropic API: {str(e)}")
+            raise
+    
+    def _generate_openai(self, model_id, messages):
+        """Generate response using OpenAI."""
+        try:
+            import openai
+            client = openai.Client(api_key=settings.OPENAI_API_KEY)
+            
+            response = client.chat.completions.create(
+                model=model_id,
+                messages=messages,
+                max_tokens=1000
+            )
+            
+            return response.choices[0].message.content
+        except ImportError:
+            logger.warning("OpenAI SDK not installed. Using mock response.")
+            return f"[Mock OpenAI Response] Would respond to conversation with {len(messages)} messages"
+        except Exception as e:
+            logger.error(f"Error with OpenAI API: {str(e)}")
+            raise
+
+
+    def _generate_deepseek(self, model_id, messages):
+        """Generate response using DeepSeek."""
+        try:
+            import requests
+            import json
+            
+            api_key = settings.DEEPSEEK_API_KEY
+            
+            # Prepare headers with authentication
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            # Prepare request payload
+            data = {
+                "model": model_id,
+                "messages": messages,
+                "max_tokens": 1000
+            }
+            
+            # Make API request
+            response = requests.post(
+                "https://api.deepseek.com/v1/chat/completions",
+                headers=headers,
+                data=json.dumps(data)
+            )
+            
+            # Check for errors
+            if response.status_code != 200:
+                logger.error(f"DeepSeek API error: {response.status_code} - {response.text}")
+                raise Exception(f"DeepSeek API error: {response.status_code}")
+            
+            # Parse response
+            response_data = response.json()
+            return response_data["choices"][0]["message"]["content"]
+        
+        except ImportError:
+            logger.warning("Requests library not installed. Using mock response.")
+            return f"[Mock DeepSeek Response] Would respond to conversation with {len(messages)} messages"
+        except Exception as e:
+            logger.error(f"Error with DeepSeek API: {str(e)}")
+            raise    

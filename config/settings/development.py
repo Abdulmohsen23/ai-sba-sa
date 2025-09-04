@@ -1,6 +1,6 @@
 """Development settings."""
 import os
-
+from .base import *  # This must be the first line in the file
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 

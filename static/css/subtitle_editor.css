@@ -1,0 +1,134 @@
+/* static/css/subtitle_editor.css */
+/* Video and Subtitle Display */
+.video-container {
+    position: relative;
+    width: 100%;
+    background-color: #000;
+}
+
+#video-player {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+#subtitle-display {
+    position: absolute;
+    bottom: 10%;
+    left: 0;
+    right: 0;
+    text-align: center;
+    padding: 8px 16px;
+    margin: 0 auto;
+    max-width: 80%;
+    font-size: 32px;
+    color: #fff;
+    text-shadow: 0 0 4px rgba(0,0,0,0.8);
+    z-index: 10;
+}
+
+/* Subtitle List */
+.subtitle-list-panel {
+    max-height: 100vh;
+    overflow-y: auto;
+}
+
+.subtitle-list {
+    max-height: calc(100vh - 160px);
+    overflow-y: auto;
+}
+
+.subtitle-item {
+    padding: 10px;
+    border-bottom: 1px solid #e9ecef;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.subtitle-item:hover {
+    background-color: #f8f9fa;
+}
+
+.subtitle-item.active {
+    background-color: #e9f5ff;
+    border-left: 3px solid #007bff;
+}
+
+.subtitle-time {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-bottom: 4px;
+}
+
+.subtitle-text {
+    word-break: break-word;
+}
+
+/* Timeline */
+.timeline-container {
+    position: relative;
+    height: 24px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.timeline-progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1;
+}
+
+.timeline-bar {
+    height: 100%;
+    width: 0;
+    background-color: rgba(13, 110, 253, 0.5);
+    transition: width 0.1s linear;
+}
+
+.timeline-markers {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 0;
+}
+
+.timeline-marker {
+    position: absolute;
+    height: 100%;
+    background-color: rgba(13, 110, 253, 0.2);
+}
+
+/* Styling Panel */
+.styling-panel {
+    max-height: 100vh;
+    overflow-y: auto;
+}
+
+/* Make panels the same height */
+@media (min-width: 768px) {
+    .subtitle-editor .row {
+        display: flex;
+    }
+    
+    .subtitle-editor .row > div {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .subtitle-editor .card {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .subtitle-list {
+        flex: 1;
+        overflow-y: auto;
+    }
+}

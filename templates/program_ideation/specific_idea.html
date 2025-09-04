@@ -1,0 +1,92 @@
+{% extends 'program_ideation/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block ideation_title %}{{ title }}{% endblock %}
+
+{% block ideation_content %}
+<div class="ideation-container">
+    <div class="ideation-form-container">
+        <div class="card shadow-sm">
+            <div class="card-body p-4" {% if idea.language == 'ar' %}dir="rtl"{% endif %}>
+                <h3 class="card-title mb-4">
+                    {% if idea.language == 'ar' %}
+                    تفاصيل عن الفكرة
+                    {% else %}
+                    Idea Details
+                    {% endif %}
+                </h3>
+                
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-12 field-group">
+                            {{ form.program_name|as_crispy_field }}
+                        </div>
+                        
+                        <div class="col-md-12 field-group">
+                            {{ form.general_idea|as_crispy_field }}
+                        </div>
+                        
+                        <div class="col-md-12 field-group">
+                            {{ form.target_audience|as_crispy_field }}
+                        </div>
+                        
+                        <div class="col-md-12 field-group">
+                            {{ form.program_objectives|as_crispy_field }}
+                        </div>
+                        
+                        <div class="col-md-6 field-group">
+                            {{ form.program_type|as_crispy_field }}
+                        </div>
+                        
+                        <div class="col-md-6 field-group">
+                            {{ form.program_duration|as_crispy_field }}
+                        </div>
+                        
+                        <div class="col-md-6 field-group">
+                            {{ form.episode_count|as_crispy_field }}
+                        </div>
+                        
+                        <div class="col-md-6 field-group">
+                            {{ form.filming_location|as_crispy_field }}
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check2-circle me-2"></i>
+                            {% if idea.language == 'ar' %}
+                            إرسال
+                            {% else %}
+                            Submit
+                            {% endif %}
+                        </button>
+                        <a href="{% url 'program_ideation:note_list' idea_id=idea.id %}" class="btn btn-outline-info">
+                            <i class="bi bi-chat-right-text me-2"></i>
+                            {% if idea.language == 'ar' %}
+                            ملاحظات وتحسينات
+                            {% else %}
+                            Notes & Enhancements
+                            {% endif %}
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="ideation-response-container">
+        <div class="response-area">
+            <h3 class="text-center">
+                {% if idea.language == 'ar' %}
+                 منطقة اقتراحات الذكاء الاصطناعي
+                {% else %}
+                AI suggestions Area
+                {% endif %}
+            </h3>
+            
+        </div>
+    </div>
+</div>
+{% endblock %}

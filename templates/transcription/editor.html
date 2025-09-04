@@ -1,0 +1,480 @@
+<!-- templates/transcription/editor.html -->
+{% extends 'transcription/base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/subtitle_editor.css' %}">
+<style>
+    .editor-container {
+        display: grid;
+        grid-template-columns: 1fr 350px;
+        gap: 20px;
+        height: calc(100vh - 200px);
+    }
+    
+    .video-section {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .video-container {
+        position: relative;
+        background: #000;
+        border-radius: 8px;
+        overflow: hidden;
+        flex: 1;
+    }
+    
+    #video-player {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
+    
+    .subtitle-overlay {
+        position: absolute;
+        bottom: 10%;
+        left: 50%;
+        transform: translateX(-50%);
+        text-align: center;
+        max-width: 80%;
+        pointer-events: none;
+        z-index: 10;
+    }
+    
+    .subtitle-text {
+        display: inline-block;
+        padding: 10px 20px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        font-size: 24px;
+        border-radius: 5px;
+        line-height: 1.4;
+    }
+    
+    .controls-section {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        overflow-y: auto;
+    }
+    
+    .subtitle-list {
+        max-height: 400px;
+        overflow-y: auto;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        padding: 10px;
+    }
+    
+    .subtitle-item {
+        padding: 10px;
+        margin-bottom: 10px;
+        border: 1px solid #e0e0e0;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .subtitle-item:hover {
+        background: #f5f5f5;
+    }
+    
+    .subtitle-item.active {
+        background: #e3f2fd;
+        border-color: #2196f3;
+    }
+    
+    .subtitle-item.playing {
+        background: #fff3e0;
+        border-color: #ff9800;
+    }
+    
+    .timeline-container {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-top: 20px;
+    }
+    
+    .timeline {
+        position: relative;
+        height: 60px;
+        background: #f0f0f0;
+        border-radius: 4px;
+        overflow: hidden;
+        cursor: pointer;
+    }
+    
+    .timeline-subtitle {
+        position: absolute;
+        height: 40px;
+        background: #4caf50;
+        border-radius: 3px;
+        top: 10px;
+        display: flex;
+        align-items: center;
+        padding: 0 5px;
+        font-size: 11px;
+        color: white;
+        overflow: hidden;
+        cursor: move;
+    }
+    
+    .timeline-playhead {
+        position: absolute;
+        top: 0;
+        width: 2px;
+        height: 100%;
+        background: #f44336;
+        pointer-events: none;
+        z-index: 100;
+    }
+    
+    .style-panel {
+        margin-top: 20px;
+    }
+    
+    .style-control {
+        margin-bottom: 15px;
+    }
+    
+    .style-control label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+        font-size: 14px;
+    }
+    
+    .color-preview {
+        display: inline-block;
+        width: 30px;
+        height: 30px;
+        border-radius: 4px;
+        vertical-align: middle;
+        margin-left: 10px;
+        border: 1px solid #ddd;
+    }
+    
+    .export-section {
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #e0e0e0;
+    }
+    
+    .btn-group-vertical .btn {
+        text-align: left;
+    }
+</style>
+{% endblock %}
+
+{% block transcription_content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2>Subtitle Editor: {{ project.video.original_filename }}</h2>
+        <div>
+            <button class="btn btn-success" id="save-all-btn">
+                <i class="bi bi-save"></i> Save All Changes
+            </button>
+            <button class="btn btn-primary" id="preview-btn">
+                <i class="bi bi-play-circle"></i> Preview
+            </button>
+        </div>
+    </div>
+    
+    <div class="editor-container">
+        <!-- Video Player Section -->
+        <div class="video-section">
+            <div class="video-container">
+                <video id="video-player" controls>
+                    <source src="{{ video.file.url }}" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+                <div class="subtitle-overlay" id="subtitle-overlay">
+                    <div class="subtitle-text" id="subtitle-text"></div>
+                </div>
+            </div>
+            
+            <!-- Timeline -->
+            <div class="timeline-container">
+                <h5>Timeline</h5>
+                <div class="timeline" id="timeline">
+                    <div class="timeline-playhead" id="timeline-playhead"></div>
+                    {% for segment in segments %}
+                    <div class="timeline-subtitle" 
+                         data-id="{{ segment.id }}"
+                         data-start="{{ segment.start_time }}"
+                         data-end="{{ segment.end_time }}"
+                         style="left: 0%; width: 10%;">
+                        {{ segment.segment_number }}
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="mt-2 d-flex justify-content-between">
+                    <small id="current-time">00:00</small>
+                    <small id="total-time">00:00</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Controls Section -->
+        <div class="controls-section">
+            <!-- Subtitle Tabs -->
+            <ul class="nav nav-tabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#subtitles-tab">Subtitles</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#style-tab">Style</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#export-tab">Export</a>
+                </li>
+            </ul>
+            
+            <div class="tab-content mt-3">
+                <!-- Subtitles Tab -->
+                <div class="tab-pane fade show active" id="subtitles-tab">
+                    <div class="mb-3">
+                        <button class="btn btn-sm btn-outline-primary" id="add-subtitle-btn">
+                            <i class="bi bi-plus"></i> Add Subtitle
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary" id="auto-sync-btn">
+                            <i class="bi bi-arrow-repeat"></i> Auto Sync
+                        </button>
+                    </div>
+                    
+                    <div class="subtitle-list" id="subtitle-list">
+                        {% for segment in segments %}
+                        <div class="subtitle-item" 
+                             data-id="{{ segment.id }}"
+                             data-start="{{ segment.start_time }}"
+                             data-end="{{ segment.end_time }}">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <span class="subtitle-number">{{ segment.segment_number }}</span>
+                                <button class="btn btn-sm btn-link text-danger p-0 delete-subtitle"
+                                        data-id="{{ segment.id }}">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                            <div class="subtitle-timing">
+                                <small class="text-muted">
+                                    <span class="start-time">{{ segment.start_time|floatformat:1 }}</span>s - 
+                                    <span class="end-time">{{ segment.end_time|floatformat:1 }}</span>s
+                                </small>
+                            </div>
+                            <div class="subtitle-text-edit mt-2">
+                                <textarea class="form-control subtitle-input" 
+                                          data-id="{{ segment.id }}"
+                                          rows="2">{{ segment.get_display_text }}</textarea>
+                            </div>
+                            {% if segment.translated_text %}
+                            <div class="mt-2">
+                                <small class="text-muted">Translation:</small>
+                                <div>{{ segment.translated_text }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <!-- Style Tab -->
+                <div class="tab-pane fade" id="style-tab">
+                    <div class="style-panel">
+                        <!-- Font Settings -->
+                        <h6>Font Settings</h6>
+                        
+                        <div class="style-control">
+                            <label>Font Family</label>
+                            <select class="form-select" id="font-family">
+                                <option value="Arial">Arial</option>
+                                <option value="Helvetica">Helvetica</option>
+                                <option value="Times New Roman">Times New Roman</option>
+                                <option value="Georgia">Georgia</option>
+                                <option value="Verdana">Verdana</option>
+                            </select>
+                        </div>
+                        
+                        <div class="style-control">
+                            <label>Font Size</label>
+                            <input type="range" class="form-range" id="font-size" 
+                                   min="12" max="48" value="{{ style.font_size }}">
+                            <small class="text-muted">Size: <span id="font-size-value">{{ style.font_size }}</span>px</small>
+                        </div>
+                        
+                        <div class="style-control">
+                            <label>Font Color</label>
+                            <input type="color" class="form-control form-control-color" 
+                                   id="font-color" value="{{ style.font_color }}">
+                        </div>
+                        
+                        <div class="style-control">
+                            <label>Font Style</label>
+                            <div class="btn-group" role="group">
+                                <input type="checkbox" class="btn-check" id="font-bold" 
+                                       {% if style.font_weight == 'bold' %}checked{% endif %}>
+                                <label class="btn btn-outline-secondary" for="font-bold">
+                                    <i class="bi bi-type-bold"></i>
+                                </label>
+                                
+                                <input type="checkbox" class="btn-check" id="font-italic"
+                                       {% if style.font_style == 'italic' %}checked{% endif %}>
+                                <label class="btn btn-outline-secondary" for="font-italic">
+                                    <i class="bi bi-type-italic"></i>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="style-control">
+                            <label>Text Alignment</label>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="text-align" 
+                                       id="align-left" value="left"
+                                       {% if style.text_align == 'left' %}checked{% endif %}>
+                                <label class="btn btn-outline-secondary" for="align-left">
+                                    <i class="bi bi-text-left"></i>
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="text-align" 
+                                       id="align-center" value="center"
+                                       {% if style.text_align == 'center' %}checked{% endif %}>
+                                <label class="btn btn-outline-secondary" for="align-center">
+                                    <i class="bi bi-text-center"></i>
+                                </label>
+                                
+                                <input type="radio" class="btn-check" name="text-align" 
+                                       id="align-right" value="right"
+                                       {% if style.text_align == 'right' %}checked{% endif %}>
+                                <label class="btn btn-outline-secondary" for="align-right">
+                                    <i class="bi bi-text-right"></i>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Background Settings -->
+                        <h6 class="mt-4">Background Settings</h6>
+                        
+                        <div class="style-control">
+                            <label>Background Color</label>
+                            <input type="color" class="form-control form-control-color" 
+                                   id="bg-color" value="{{ style.background_color }}">
+                        </div>
+                        
+                        <div class="style-control">
+                            <label>Background Opacity</label>
+                            <input type="range" class="form-range" id="bg-opacity" 
+                                   min="0" max="100" value="{{ style.background_opacity|floatformat:0 }}">
+                            <small class="text-muted">Opacity: <span id="bg-opacity-value">{{ style.background_opacity|floatformat:0 }}</span>%</small>
+                        </div>
+                        
+                        <div class="style-control">
+                            <label>Padding</label>
+                            <input type="range" class="form-range" id="padding" 
+                                   min="0" max="30" value="{{ style.padding }}">
+                            <small class="text-muted">Padding: <span id="padding-value">{{ style.padding }}</span>px</small>
+                        </div>
+                        
+                        <div class="style-control">
+                            <label>Corner Radius</label>
+                            <input type="range" class="form-range" id="border-radius" 
+                                   min="0" max="20" value="{{ style.border_radius }}">
+                            <small class="text-muted">Radius: <span id="radius-value">{{ style.border_radius }}</span>px</small>
+                        </div>
+                        
+                        <!-- Position Settings -->
+                        <h6 class="mt-4">Position</h6>
+                        
+                        <div class="style-control">
+                            <label>Vertical Position</label>
+                            <input type="range" class="form-range" id="position-y" 
+                                   min="10" max="90" value="{{ style.position_y }}">
+                            <small class="text-muted">Position: <span id="position-value">{{ style.position_y }}</span>% from top</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Export Tab -->
+                <div class="tab-pane fade" id="export-tab">
+                    <div class="export-section">
+                        <h6>Download Subtitles</h6>
+                        <div class="btn-group-vertical w-100 mb-3">
+                            <a href="{% url 'transcription:export_subtitles' project.id 'srt' %}" 
+                               class="btn btn-outline-primary text-start">
+                                <i class="bi bi-file-earmark-text"></i> Download SRT File
+                            </a>
+                            <a href="{% url 'transcription:export_subtitles' project.id 'vtt' %}" 
+                               class="btn btn-outline-primary text-start">
+                                <i class="bi bi-file-earmark-code"></i> Download WebVTT File
+                            </a>
+                        </div>
+                        
+                        <h6>Download Documents</h6>
+                        <div class="btn-group-vertical w-100 mb-3">
+                            {% if project.doc_file_arabic %}
+                            <a href="{% url 'transcription:download_document' project.id 'arabic' %}" 
+                               class="btn btn-outline-info text-start">
+                                <i class="bi bi-file-earmark-word"></i> Arabic Transcription (DOCX)
+                            </a>
+                            {% endif %}
+                            {% if project.doc_file_english %}
+                            <a href="{% url 'transcription:download_document' project.id 'english' %}" 
+                               class="btn btn-outline-info text-start">
+                                <i class="bi bi-file-earmark-word"></i> English Translation (DOCX)
+                            </a>
+                            {% endif %}
+                        </div>
+                        
+                        <h6>Export Video</h6>
+                        <button class="btn btn-success w-100" id="export-video-btn">
+                            <i class="bi bi-camera-video"></i> Export Video with Subtitles
+                        </button>
+                        <small class="text-muted d-block mt-2">
+                            This will create a new video file with burned-in subtitles
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Subtitle Modal -->
+<div class="modal fade" id="addSubtitleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Subtitle</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Start Time (seconds)</label>
+                    <input type="number" class="form-control" id="new-subtitle-start" step="0.1">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">End Time (seconds)</label>
+                    <input type="number" class="form-control" id="new-subtitle-end" step="0.1">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Text</label>
+                    <textarea class="form-control" id="new-subtitle-text" rows="3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-new-subtitle">Add Subtitle</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const projectId = {{ project.id }};
+    const csrfToken = '{{ csrf_token }}';
+    const initialStyle = {{ style_json|safe }};
+</script>
+<script src="{% static 'js/subtitle_editor.js' %}"></script>
+{% endblock %}

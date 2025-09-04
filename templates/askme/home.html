@@ -1,0 +1,123 @@
+{% extends 'askme/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block askme_title %}Ask Me{% endblock %}
+
+{% block askme_content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h4 mb-4">Start a New Conversation</h2>
+                
+                <form method="post" enctype="multipart/form-data" id="question-form">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        {{ form.content|as_crispy_field }}
+                    </div>
+                    
+                    <div class="mb-3">
+                        {{ form.file|as_crispy_field }}
+                        <div class="form-text">
+                            Supported formats: TXT, PDF, DOCX, JPG, JPEG, PNG. Maximum file size: 10MB.
+                        </div>
+                    </div>
+                    
+                    <h5 class="mb-3">Select AI Model</h5>
+                    <div class="row row-cols-1 row-cols-md-2 g-3 mb-4">
+                        {% for model in models %}
+                        <div class="col">
+                            <label class="card model-card h-100 w-100 m-0" for="id_llm_model_{{ forloop.counter0 }}">
+                                <div class="card-body">
+                                    <div class="form-check">
+                                        <input type="radio" name="llm_model" value="{{ model.id }}" id="id_llm_model_{{ forloop.counter0 }}" class="form-check-input model-radio" {% if forloop.first %}checked{% endif %}>
+                                        <h5 class="mb-2">{{ model.name }}</h5>
+                                    </div>
+                                    <p class="card-text small text-muted">{{ model.description }}</p>
+                                    <div class="text-muted small">Provider: {{ model.provider }}</div>
+                                </div>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary" id="submit-button">
+                            <i class="bi bi-send me-2"></i> Start Conversation
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="h5 mb-0">Recent Conversations</h3>
+                <a href="{% url 'askme:conversation_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for conversation in recent_conversations %}
+                <a href="{% url 'askme:conversation' conversation.id %}" class="list-group-item list-group-item-action">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1 text-truncate">{{ conversation.title }}</h6>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">{{ conversation.updated_at|timesince }} ago</small>
+                        <div>
+                            <small class="text-muted">{{ conversation.questions.count }} message{% if conversation.questions.count != 1 %}s{% endif %}</small>
+                            <span class="badge bg-primary ms-2">{{ conversation.llm_model.name }}</span>
+                        </div>
+                    </div>
+                </a>
+                {% empty %}
+                <div class="list-group-item text-center py-4">
+                    <p class="mb-2 text-muted">You haven't started any conversations yet.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle model card selection
+        const modelCards = document.querySelectorAll('.model-card');
+        const radioInputs = document.querySelectorAll('.model-radio');
+        
+        // Initially select the first model
+        if (modelCards.length > 0 && radioInputs.length > 0) {
+            if (radioInputs[0].checked) {
+                modelCards[0].classList.add('selected');
+            }
+        }
+        
+        // Add click event to model cards
+        modelCards.forEach((card, index) => {
+            card.addEventListener('click', function() {
+                // Remove selected class from all cards
+                modelCards.forEach(c => c.classList.remove('selected'));
+                // Add selected class to clicked card
+                card.classList.add('selected');
+                // Check the corresponding radio button
+                radioInputs[index].checked = true;
+            });
+        });
+        
+        // Handle form submission
+        const form = document.getElementById('question-form');
+        const submitButton = document.getElementById('submit-button');
+        
+        form.addEventListener('submit', function() {
+            // Disable button and show loading state
+            submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Starting...';
+            submitButton.disabled = true;
+        });
+    });
+</script>
+{% endblock %}

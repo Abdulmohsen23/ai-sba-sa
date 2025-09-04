@@ -1,0 +1,108 @@
+{% extends 'translation/base.html' %}
+
+{% block translation_title %}Translation & Subtitling{% endblock %}
+
+{% block translation_content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 pe-md-4">
+                        <h2 class="h3 mb-4">Automatic Subtitle Generation & Translation</h2>
+                        
+                        <p class="lead">
+                            Upload your videos and automatically generate subtitles with AI-powered speech recognition.
+                            Translate between Arabic and English with just a few clicks.
+                        </p>
+                        
+                        <h3 class="h5 mt-4 mb-3">Key Features</h3>
+                        <ul class="feature-list">
+                            <li>
+                                <i class="bi bi-mic-fill text-primary me-2"></i>
+                                Automatic speech recognition for Arabic and English
+                            </li>
+                            <li>
+                                <i class="bi bi-translate text-primary me-2"></i>
+                                Translation between Arabic and English
+                            </li>
+                            <li>
+                                <i class="bi bi-pencil-square text-primary me-2"></i>
+                                Edit subtitles with live preview
+                            </li>
+                            <li>
+                                <i class="bi bi-type text-primary me-2"></i>
+                                Customize subtitle styling and appearance
+                            </li>
+                            <li>
+                                <i class="bi bi-download text-primary me-2"></i>
+                                Download transcriptions and subtitle files
+                            </li>
+                        </ul>
+                        
+                        <div class="mt-4">
+                            <a href="{% url 'translation:create' %}" class="btn btn-primary btn-lg">
+                                <i class="bi bi-plus-lg me-2"></i> Create New Project
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6 ps-md-4 mt-4 mt-md-0">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h3 class="h5 mb-3">How It Works</h3>
+                                
+                                <div class="d-flex mb-3">
+                                    <div class="me-3 text-primary">
+                                        <div class="step-number">1</div>
+                                    </div>
+                                    <div>
+                                        <h4 class="h6 mb-1">Upload Your Video</h4>
+                                        <p class="text-muted">Upload a video and select the source language.</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex mb-3">
+                                    <div class="me-3 text-primary">
+                                        <div class="step-number">2</div>
+                                    </div>
+                                    <div>
+                                        <h4 class="h6 mb-1">AI Generates Subtitles</h4>
+                                        <p class="text-muted">Our system automatically transcribes the speech and generates subtitles.</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex mb-3">
+                                    <div class="me-3 text-primary">
+                                        <div class="step-number">3</div>
+                                    </div>
+                                    <div>
+                                        <h4 class="h6 mb-1">Edit & Customize</h4>
+                                        <p class="text-muted">Use the editor to refine subtitles and adjust their appearance.</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-flex">
+                                    <div class="me-3 text-primary">
+                                        <div class="step-number">4</div>
+                                    </div>
+                                    <div>
+                                        <h4 class="h6 mb-1">Download & Use</h4>
+                                        <p class="text-muted">Download subtitles in multiple formats and use them in your videos.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <a href="{% url 'translation:list' %}" class="btn btn-outline-primary">
+                                <i class="bi bi-folder me-2"></i> View Your Projects
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

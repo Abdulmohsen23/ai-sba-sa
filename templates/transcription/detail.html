@@ -1,0 +1,203 @@
+{% extends 'transcription/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block transcription_title %}Transcription Details{% endblock %}
+
+{% block transcription_content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Video Information</h5>
+            </div>
+            <div class="card-body">
+                <h6 class="mb-3 text-truncate" title="{{ video.original_filename }}">
+                    <i class="bi bi-file-earmark-play me-2 text-primary"></i> {{ video.original_filename }}
+                </h6>
+                
+                <dl class="row mb-0">
+                    <dt class="col-sm-5">Upload Date</dt>
+                    <dd class="col-sm-7">{{ video.created_at|date:"M d, Y h:i A" }}</dd>
+                    
+                    <dt class="col-sm-5">File Size</dt>
+                    <dd class="col-sm-7">{{ video.file_size|filesizeformat }}</dd>
+                    
+                    <dt class="col-sm-5">Status</dt>
+                    <dd class="col-sm-7">
+                        <span class="status-{{ video.status }}">
+                            <i class="bi bi-{% if video.status == 'uploaded' %}hourglass-top{% elif video.status == 'processing' %}gear-fill spin{% elif video.status == 'completed' %}check-circle-fill{% else %}exclamation-triangle-fill{% endif %}"></i>
+                            {{ video.get_status_display }}
+                        </span>
+                    </dd>
+                    
+                    {% if video.status == 'completed' and video.transcription %}
+                    <dt class="col-sm-5">Language</dt>
+                    <dd class="col-sm-7">{{ video.transcription.get_language_display }}</dd>
+                    
+                    <dt class="col-sm-5">Processing Time</dt>
+                    <dd class="col-sm-7">{{ video.transcription.processing_time|floatformat:2 }} minutes</dd>
+                    {% endif %}
+                    
+                    <dt class="col-sm-5">Retention</dt>
+                    <dd class="col-sm-7">
+                        {% if video.retention == '5days' %}
+                        Keep until {{ video.delete_at|date:"M d, Y" }}
+                        {% else %}
+                        Delete after transcription
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+            
+            {% if video.status == 'completed' and video.transcription %}
+            <div class="card-footer">
+                <div class="d-grid gap-2">
+                    {% if video.transcription.document_file %}
+                    <a href="{{ video.transcription.document_file.url }}" class="btn btn-outline-primary" download>
+                        <i class="bi bi-file-earmark-word me-2"></i> Download Document
+                    </a>
+                    {% endif %}
+                    
+                    <form method="post" action="{% url 'transcription:update_retention' video.id %}">
+                        {% csrf_token %}
+                        {% if video.retention == '5days' %}
+                        <input type="hidden" name="retention" value="delete">
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="bi bi-trash me-2"></i> Delete Video Now
+                        </button>
+                        {% else %}
+                        <input type="hidden" name="retention" value="5days">
+                        <button type="submit" class="btn btn-outline-success">
+                            <i class="bi bi-clock-history me-2"></i> Keep Video for 5 Days
+                        </button>
+                        {% endif %}
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if video.status == 'completed' and video.transcription %}
+            {% if user_feedback %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Your Feedback</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <p class="mb-1">Rating:</p>
+                        <div class="rating">
+                            {% for i in "12345" %}
+                            <i class="bi bi-star-fill {% if user_feedback.rating >= forloop.counter %}text-warning{% else %}text-muted{% endif %}"></i>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    {% if user_feedback.comments %}
+                    <div>
+                        <p class="mb-1">Comments:</p>
+                        <p class="text-muted">{{ user_feedback.comments }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% elif feedback_form %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Provide Feedback</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ feedback_form|crispy }}
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-send me-2"></i> Submit Feedback
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        {% endif %}
+    </div>
+    
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Transcription Result</h5>
+            </div>
+            <div class="card-body">
+                {% if video.status == 'completed' and video.transcription %}
+                    <div class="transcription-content">
+                        {% for paragraph in video.transcription.content.split|linebreaksbr %}
+                            <p>{{ paragraph }}</p>
+                        {% endfor %}
+                    </div>
+                {% elif video.status == 'processing' %}
+                    <div class="text-center py-5">
+                        <div class="spinner-border text-primary mb-3" role="status">
+                            <span class="visually-hidden">Processing...</span>
+                        </div>
+                        <h5>Processing Your Video</h5>
+                        <p class="text-muted">This may take several minutes depending on the length of your video.</p>
+                        <div class="progress mt-3">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                        </div>
+                    </div>
+                {% elif video.status == 'uploaded' %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-hourglass-top display-4 text-muted mb-3"></i>
+                        <h5>Waiting to Start</h5>
+                        <p class="text-muted">Your video is in the queue. Processing will begin shortly.</p>
+                    </div>
+                {% elif video.status == 'failed' %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-exclamation-triangle-fill display-4 text-danger mb-3"></i>
+                        <h5>Processing Failed</h5>
+                        <p class="text-muted">{{ video.error_message|default:"An error occurred during transcription." }}</p>
+                        <a href="{% url 'transcription:upload' %}" class="btn btn-primary mt-3">
+                            <i class="bi bi-upload me-2"></i> Try Again with Another Video
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if video.status == 'processing' or video.status == 'uploaded' %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const videoId = {{ video.id }};
+        let checkInterval;
+        
+        function checkStatus() {
+            fetch(`/transcription/${videoId}/status/`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Status:', data);
+                    if (data.status !== '{{ video.status }}') {
+                        // Status has changed, reload the page
+                        window.location.reload();
+                    } else if (data.status === 'completed' || data.status === 'failed') {
+                        // Stop polling if the process is complete
+                        clearInterval(checkInterval);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking status:', error);
+                });
+        }
+        
+        // Check status every 10 seconds
+        checkInterval = setInterval(checkStatus, 10000);
+        
+        // Also check once right after page load
+        checkStatus();
+    });
+</script>
+{% endif %}
+{% endblock %}

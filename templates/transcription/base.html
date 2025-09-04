@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block extra_css %}
+<style>
+    .status-uploaded { color: #6c757d; } /* text-secondary */
+    .status-processing { color: #fd7e14; } /* text-warning */
+    .status-completed { color: #198754; } /* text-success */
+    .status-failed { color: #dc3545; } /* text-danger */
+    
+    .transcription-content {
+        max-height: 500px;
+        overflow-y: auto;
+        direction: rtl;
+        text-align: right;
+        padding: 1rem;
+        background-color: #f8f9fa;
+        border-radius: 0.375rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <h1 class="h2">{% block transcription_title %}Video Transcription{% endblock %}</h1>
+        <div>
+            {% block tool_actions %}
+            <a href="{% url 'transcription:home' %}" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-house-door"></i> Home
+            </a>
+            <a href="{% url 'transcription:upload' %}" class="btn btn-primary">
+                <i class="bi bi-upload"></i> Upload Video
+            </a>
+            {% endblock %}
+        </div>
+    </div>
+    
+    {% if messages %}
+    <div class="messages mb-4">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    {% block transcription_content %}{% endblock %}
+</div>
+{% endblock %}

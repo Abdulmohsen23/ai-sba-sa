@@ -1,0 +1,69 @@
+{% extends 'transcription/base.html' %}
+
+{% block transcription_title %}My Transcriptions{% endblock %}
+
+{% block transcription_content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">All Transcriptions</h5>
+        <a href="{% url 'transcription:upload' %}" class="btn btn-sm btn-primary">
+            <i class="bi bi-upload me-1"></i> Upload New
+        </a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>File Name</th>
+                    <th>Status</th>
+                    <th>Language</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for video in videos %}
+                <tr>
+                    <td class="text-truncate" style="max-width: 300px;">
+                        {{ video.original_filename }}
+                    </td>
+                    <td>
+                        <span class="status-{{ video.status }}">
+                            <i class="bi bi-{% if video.status == 'uploaded' %}hourglass-top{% elif video.status == 'processing' %}gear-fill spin{% elif video.status == 'completed' %}check-circle-fill{% else %}exclamation-triangle-fill{% endif %}"></i>
+                            {{ video.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if hasattr video 'transcription' %}
+                            {{ video.transcription.get_language_display }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>{{ video.created_at|date:"M d, Y h:i A" }}</td>
+                    <td>
+                        <a href="{% url 'transcription:detail' video.id %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        {% if video.status == 'completed' and video.transcription.document_file %}
+                        <a href="{{ video.transcription.document_file.url }}" class="btn btn-sm btn-outline-success" download>
+                            <i class="bi bi-download"></i>
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-4">
+                        <p class="mb-2 text-muted">You haven't transcribed any videos yet.</p>
+                        <a href="{% url 'transcription:upload' %}" class="btn btn-sm btn-primary">
+                            <i class="bi bi-upload me-1"></i> Upload Your First Video
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
