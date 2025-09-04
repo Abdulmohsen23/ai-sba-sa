@@ -2,45 +2,35 @@ import os
 import dj_database_url
 from .base import *
 
-# Railway automatically sets DEBUG=False for production
-DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
+# Security
+DEBUG = False
+SECRET_KEY = os.environ.get('SECRET_KEY', 'fallback-key-change-in-production')
+ALLOWED_HOSTS = ['*']  # Railway handles domain security
 
-# Railway provides RAILWAY_ENVIRONMENT variable
-RAILWAY_ENVIRONMENT = os.environ.get('RAILWAY_ENVIRONMENT')
-
-# Use Railway's provided secret key or fallback
-SECRET_KEY = os.environ.get('SECRET_KEY', os.environ.get('RAILWAY_SECRET_KEY', 'fallback-secret-key'))
-
-# Railway automatically provides domains
-ALLOWED_HOSTS = ['*']  # Railway handles this securely
-
-# Database - Railway provides DATABASE_URL
+# Database
 DATABASE_URL = os.environ.get('DATABASE_URL')
 if DATABASE_URL:
     DATABASES['default'] = dj_database_url.parse(DATABASE_URL)
+else:
+    # Fallback to SQLite for development
+    DATABASES['default'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 
-# Static files configuration for Railway
+# Static and Media Files
 STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-
-# Disable S3 storage for now - use local storage on Railway
-# DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
-
-# Media files
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = BASE_DIR / 'media'
 
-# Security settings - only enable if HTTPS is properly configured
-if RAILWAY_ENVIRONMENT == 'production':
-    # SECURE_SSL_REDIRECT = True
-    # SESSION_COOKIE_SECURE = True
-    # CSRF_COOKIE_SECURE = True
-    # SECURE_HSTS_SECONDS = 31536000
-    # SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    # SECURE_HSTS_PRELOAD = True
-    pass
-
-# Logging configuration for Railway
+# Security Settings (enable after HTTPS is confirmed)
+if not DEBUG:
+    SECURE_SSL_REDIRECT = False  # Railway handles SSL
+    SESSION_COOKIE_SECURE = False  # Enable after confirming HTTPS works
+    CSRF_COOKIE_SECURE = False  # Enable after confirming HTTPS works
+    
+# Logging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -49,10 +39,36 @@ LOGGING = {
             'class': 'logging.StreamHandler',
         },
     },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
     'loggers': {
         'django': {
             'handlers': ['console'],
             'level': 'INFO',
+            'propagate': False,
+        },
+        'program_ideation': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'askme': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
         },
     },
 }
+
+# Cache (optional - add Redis later if needed)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+    }
+}
+
+# File Upload Settings
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024  # 10MB
