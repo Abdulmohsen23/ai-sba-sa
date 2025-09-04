@@ -27,7 +27,7 @@ import io
 from datetime import datetime
 
 
-@login_required
+# @login_required
 def home(request):
     """Home page for Program Ideation tool."""
     return render(request, 'program_ideation/home.html', {
@@ -35,7 +35,7 @@ def home(request):
     })
 
 
-@login_required
+# @login_required
 def select_language(request):
     """Select language for the ideation process."""
     if request.method == 'POST':
@@ -69,7 +69,7 @@ def select_language(request):
     })
 
 
-@login_required
+# @login_required
 def start_ideation(request, idea_id):
     """Start the ideation process."""
     idea = get_object_or_404(ProgramIdea, id=idea_id, user=request.user)
@@ -114,7 +114,7 @@ def start_ideation(request, idea_id):
     })
 
 
-@login_required
+# @login_required
 def specific_idea(request, idea_id):
     """Handle the specific idea path."""
     idea = get_object_or_404(ProgramIdea, id=idea_id, user=request.user)
@@ -210,7 +210,7 @@ def specific_idea(request, idea_id):
     })
 
 
-@login_required
+# @login_required
 def missing_data(request, idea_id):
     """Show missing data proposals and continue with form."""
     idea = get_object_or_404(ProgramIdea, id=idea_id, user=request.user)
@@ -254,7 +254,7 @@ def missing_data(request, idea_id):
     })
 
 
-@login_required
+# @login_required
 def no_specific_idea(request, idea_id):
     """Handle the no specific idea path."""
     idea = get_object_or_404(ProgramIdea, id=idea_id, user=request.user)
@@ -323,7 +323,7 @@ def no_specific_idea(request, idea_id):
     })
 
 
-@login_required
+# @login_required
 def suggestions(request, idea_id):
     """Show suggestions and allow user to select one."""
     idea = get_object_or_404(ProgramIdea, id=idea_id, user=request.user)
@@ -399,7 +399,7 @@ def suggestions(request, idea_id):
     })
 
 
-@login_required
+# @login_required
 def complete(request, idea_id):
     """Show completed idea with all generated content."""
     idea = get_object_or_404(ProgramIdea, id=idea_id, user=request.user)
@@ -441,7 +441,7 @@ def complete(request, idea_id):
     })
 
 
-@login_required
+# @login_required
 def idea_list(request):
     """List all program ideas."""
     ideas = ProgramIdea.objects.filter(user=request.user).order_by('-created_at')
@@ -454,7 +454,7 @@ def idea_list(request):
 # Add these to program_ideation/views.py
 
 #  REPLACE the existing add_note view:
-@login_required
+# @login_required
 def add_note(request, idea_id):
     """Enhanced add note view with multi-field support."""
     idea = get_object_or_404(ProgramIdea, id=idea_id, user=request.user)
@@ -534,7 +534,7 @@ def add_note(request, idea_id):
     })
 
 
-@login_required
+# @login_required
 def note_list(request, idea_id):
     """Show list of notes for an idea."""
     idea = get_object_or_404(ProgramIdea, id=idea_id, user=request.user)
@@ -554,7 +554,7 @@ def note_list(request, idea_id):
 
 
 # UPDATE the note_detail view:
-@login_required
+# @login_required
 def note_detail(request, note_id):
     """Enhanced note detail view."""
     note = get_object_or_404(IdeaNote, id=note_id)
@@ -584,7 +584,7 @@ def note_detail(request, note_id):
 
 
 # ADD this new view for AJAX suggestion application:
-@login_required
+# @login_required
 def apply_note_suggestion(request, note_id):
     """Apply a suggestion via AJAX."""
     if request.method != 'POST':
@@ -724,7 +724,7 @@ def process_note_task(note_id):
 
 
 # PDF Export using ReportLab
-@login_required
+# @login_required
 def export_idea_pdf(request, idea_id):
     """Export program idea as PDF"""
     from reportlab.lib.pagesizes import letter, A4
@@ -853,7 +853,7 @@ def export_idea_pdf(request, idea_id):
 
 
 # Word Export using python-docx
-@login_required
+# @login_required
 def export_idea_word(request, idea_id):
     """Export program idea as Word document"""
     from docx import Document
