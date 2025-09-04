@@ -1,3 +1,4 @@
+# Core Django packages
 Django==4.2.8
 python-dotenv==1.0.0
 Pillow==10.1.0
@@ -8,9 +9,21 @@ psycopg2-binary==2.9.9
 dj-database-url==2.1.0
 whitenoise==6.6.0
 gunicorn==21.2.0
+
+# API packages
 openai==1.6.1
 deepseek-ai==0.0.1
-torch==2.1.1
-whisper==1.1.10
-transformers==4.35.2
-ffmpeg-python==0.2.0
+
+# AI/ML packages - these are heavy and may cause build issues
+# Consider using lighter alternatives or CPU-only versions
+# torch==2.1.1+cpu -f https://download.pytorch.org/whl/torch_stable.html
+# transformers==4.35.2
+
+# Audio processing - these can be problematic
+# whisper==1.1.10  # Comment out if causing issues
+# ffmpeg-python==0.2.0  # Comment out if causing issues
+
+# System dependencies that might be missing
+# Add these if needed:
+# librosa==0.10.1  # for audio processing
+# soundfile==0.12.1  # for audio file handling
