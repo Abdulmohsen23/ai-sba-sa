@@ -3,7 +3,6 @@ from django.contrib.auth.decorators import login_required
 from .models import AITool
 
 
-@login_required
 def dashboard(request):
     """Main dashboard displaying available AI tools."""
     tools = AITool.objects.filter(is_active=True)
