@@ -20,7 +20,7 @@ django-debug-toolbar==4.2.0
 # transformers==4.35.2
 
 # Audio processing - these can be problematic
-# whisper==1.1.10  # Comment out if causing issues
+whisper==1.1.10  # Comment out if causing issues
 # ffmpeg-python==0.2.0  # Comment out if causing issues
 
 # System dependencies that might be missing
