@@ -10,9 +10,14 @@ whitenoise==6.6.0
 gunicorn==21.2.0
 openai==1.6.1
 deepseek-ai==0.0.1
-
-# Development tools
 django-debug-toolbar==4.2.0
+
+# Program Ideation dependencies
+python-docx==0.8.11
+reportlab==4.0.4
+
+# Keep whisper for other apps
+whisper==1.1.10
 
 # AI/ML packages - these are heavy and may cause build issues
 # Consider using lighter alternatives or CPU-only versions
@@ -20,7 +25,7 @@ django-debug-toolbar==4.2.0
 # transformers==4.35.2
 
 # Audio processing - these can be problematic
-whisper==1.1.10  # Comment out if causing issues
+# whisper==1.1.10  # Comment out if causing issues
 # ffmpeg-python==0.2.0  # Comment out if causing issues
 
 # System dependencies that might be missing

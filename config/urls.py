@@ -21,26 +21,25 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView
 
+# Check if we're in build phase to avoid importing heavy dependencies
 BUILD_PHASE = os.environ.get('BUILD_PHASE', 'false').lower() == 'true'
 
+# Core URLs including program_ideation from the start
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('accounts/', include('accounts.urls')),  # Add this line
-    # Django auth URLs
-    path('accounts/', include('django.contrib.auth.urls')),
-    # Transcription app URLs (to be added later)
-    path('askme/', include('askme.urls', namespace='askme')),  # Add this line
-    path('program-ideation/', include('program_ideation.urls', namespace='program_ideation')),  # Add this line
-    # Include tool registry URLs for the dashboard
-    path('', include('tool_registry.urls')),
+    path('accounts/', include('accounts.urls')),
+    path('accounts/', include('django.contrib.auth.urls')),  # Django auth URLs
+    path('askme/', include('askme.urls', namespace='askme')),
+    path('program-ideation/', include('program_ideation.urls', namespace='program_ideation')),  # Include from start
+    path('', include('tool_registry.urls')),  # Include tool registry URLs for the dashboard
 ]
 
-if not  BUILD_PHASE:
+# Only exclude transcription and translation apps during build phase (they have heavier ML dependencies)
+if not BUILD_PHASE:
     urlpatterns += [
-            path('transcription/', include('transcription.urls', namespace='transcription')),
-            path('translation/', include('translation.urls', namespace='translation')),
+        path('transcription/', include('transcription.urls', namespace='transcription')),
+        path('translation/', include('translation.urls', namespace='translation')),
     ]
-
 
 # Add debug toolbar URLs in development
 if settings.DEBUG:
