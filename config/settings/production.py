@@ -3,9 +3,30 @@ import dj_database_url
 from .base import *
 
 # Security
-DEBUG = False
+DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 SECRET_KEY = os.environ.get('SECRET_KEY', 'fallback-key-change-in-production')
 ALLOWED_HOSTS = ['*']  # Railway handles domain security
+
+# CSRF Settings for Railway
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.railway.app',
+    'https://*.up.railway.app', 
+]
+
+# Get Railway domain if available
+RAILWAY_PUBLIC_DOMAIN = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
+if RAILWAY_PUBLIC_DOMAIN:
+    CSRF_TRUSTED_ORIGINS.append(f'https://{RAILWAY_PUBLIC_DOMAIN}')
+
+# CSRF Cookie Settings
+CSRF_COOKIE_SECURE = False  # Railway handles SSL termination
+CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_SAMESITE = 'Lax'
+
+# Session Settings
+SESSION_COOKIE_SECURE = False  # Railway handles SSL termination
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
 
 # Database
 DATABASE_URL = os.environ.get('DATABASE_URL')
@@ -24,11 +45,9 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Security Settings (enable after HTTPS is confirmed)
-if not DEBUG:
-    SECURE_SSL_REDIRECT = False  # Railway handles SSL
-    SESSION_COOKIE_SECURE = False  # Enable after confirming HTTPS works
-    CSRF_COOKIE_SECURE = False  # Enable after confirming HTTPS works
+# Security Settings (Railway handles SSL)
+SECURE_SSL_REDIRECT = False  # Railway handles SSL
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     
 # Logging
 LOGGING = {
