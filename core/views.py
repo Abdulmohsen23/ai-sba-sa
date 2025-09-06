@@ -9,6 +9,7 @@ def register_models_and_tools(request):
     from askme.models import LLMModel
     from tool_registry.models import AITool
     from django.utils.text import slugify
+    from django.middleware.csrf import get_token
     
     if request.method == 'POST':
         try:
@@ -97,8 +98,12 @@ def register_models_and_tools(request):
         except Exception as e:
             return HttpResponse(f"Error: {e}")
     
-    return HttpResponse("""
+    # Generate CSRF token for the form
+    csrf_token = get_token(request)
+    
+    return HttpResponse(f"""
     <form method="post">
+    <input type="hidden" name="csrfmiddlewaretoken" value="{csrf_token}">
     <h2>Register AI Models and Tools</h2>
     <p>This will register:</p>
     <ul>
