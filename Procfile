@@ -1,1 +1,1 @@
-web: python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --timeout 600 --workers 2 --worker-class sync --worker-connections 10 --max-requests 50 --graceful-timeout 600 --log-level info --access-logfile - --error-logfile -
+web: python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --timeout 900 --keep-alive 900 --max-requests 10 --max-requests-jitter 5 --worker-class sync --workers 1 --worker-connections 1000 --graceful-timeout 900 --log-level debug --access-logfile - --error-logfile -
