@@ -137,8 +137,53 @@ class LLMService:
             raise
 
 
+    # def _generate_deepseek(self, model_id, messages):
+    #     """Generate response using DeepSeek."""
+    #     try:
+    #         import requests
+    #         import json
+            
+    #         api_key = settings.DEEPSEEK_API_KEY
+            
+    #         # Prepare headers with authentication
+    #         headers = {
+    #             "Authorization": f"Bearer {api_key}",
+    #             "Content-Type": "application/json"
+    #         }
+            
+    #         # Prepare request payload
+    #         data = {
+    #             "model": model_id,
+    #             "messages": messages,
+    #             "max_tokens": 1000
+    #         }
+            
+    #         # Make API request
+    #         response = requests.post(
+    #             "https://api.deepseek.com/v1/chat/completions",
+    #             headers=headers,
+    #             data=json.dumps(data)
+    #         )
+            
+    #         # Check for errors
+    #         if response.status_code != 200:
+    #             logger.error(f"DeepSeek API error: {response.status_code} - {response.text}")
+    #             raise Exception(f"DeepSeek API error: {response.status_code}")
+            
+    #         # Parse response
+    #         response_data = response.json()
+    #         return response_data["choices"][0]["message"]["content"]
+        
+    #     except ImportError:
+    #         logger.warning("Requests library not installed. Using mock response.")
+    #         return f"[Mock DeepSeek Response] Would respond to conversation with {len(messages)} messages"
+    #     except Exception as e:
+    #         logger.error(f"Error with DeepSeek API: {str(e)}")
+    #         raise    
+    # Add this to your askme/services.py - Replace the _generate_deepseek method
+
     def _generate_deepseek(self, model_id, messages):
-        """Generate response using DeepSeek."""
+        """Generate response using DeepSeek with proper timeout handling."""
         try:
             import requests
             import json
@@ -155,28 +200,43 @@ class LLMService:
             data = {
                 "model": model_id,
                 "messages": messages,
-                "max_tokens": 1000
+                "max_tokens": 1000,
+                "temperature": 0.7,
+                "timeout": 45  # Add timeout to the API request
             }
             
-            # Make API request
+            # Make API request with timeout
             response = requests.post(
                 "https://api.deepseek.com/v1/chat/completions",
                 headers=headers,
-                data=json.dumps(data)
+                data=json.dumps(data),
+                timeout=45  # 45 second timeout for the HTTP request
             )
             
             # Check for errors
             if response.status_code != 200:
                 logger.error(f"DeepSeek API error: {response.status_code} - {response.text}")
-                raise Exception(f"DeepSeek API error: {response.status_code}")
+                # If API fails, use mock response instead of crashing
+                return f"[DeepSeek API Error - Using Mock] Would respond to conversation with {len(messages)} messages"
             
             # Parse response
             response_data = response.json()
+            
+            if 'choices' not in response_data or not response_data['choices']:
+                logger.error(f"DeepSeek API returned invalid response: {response_data}")
+                return f"[DeepSeek API Invalid Response - Using Mock] Would respond to conversation with {len(messages)} messages"
+                
             return response_data["choices"][0]["message"]["content"]
         
+        except requests.exceptions.Timeout:
+            logger.warning("DeepSeek API timeout - using mock response")
+            return f"[DeepSeek Timeout - Using Mock] Would respond to conversation with {len(messages)} messages"
+        except requests.exceptions.RequestException as e:
+            logger.error(f"DeepSeek API request error: {str(e)}")
+            return f"[DeepSeek Request Error - Using Mock] Would respond to conversation with {len(messages)} messages"
         except ImportError:
             logger.warning("Requests library not installed. Using mock response.")
             return f"[Mock DeepSeek Response] Would respond to conversation with {len(messages)} messages"
         except Exception as e:
             logger.error(f"Error with DeepSeek API: {str(e)}")
-            raise    
+            return f"[DeepSeek Error - Using Mock] Would respond to conversation with {len(messages)} messages"

@@ -547,37 +547,88 @@ Use the exact formatting as shown, keeping the heading marked with five equals s
             logger.error(f"Exception in process_idea_note: {str(e)}")
             return self._get_error_message()
     
-    def _get_default_model(self):
-        """Get the default LLM model to use."""
-        from askme.models import LLMModel
+    # def _get_default_model(self):
+    #     """Get the default LLM model to use."""
+    #     from askme.models import LLMModel
         
-        # Try to get a model that's meant for this type of creative work
+    #     # Try to get a model that's meant for this type of creative work
+    #     try:
+    #         # First try to get an active DeepSeek model specifically
+    #         model = LLMModel.objects.filter(is_active=True, provider__iexact='deepseek').first()
+            
+    #         if not model:
+    #             # Then try OpenAI as fallback
+    #             model = LLMModel.objects.filter(is_active=True, provider__iexact='OpenAI').first()
+                
+    #         if not model:
+    #             # Fall back to any active model
+    #             model = LLMModel.objects.filter(is_active=True).first()
+                
+    #         if not model:
+    #             # If no active models, get any model
+    #             model = LLMModel.objects.first()
+            
+    #         # Log which model we're using (helpful for debugging)
+    #         if model:
+    #             logger.info(f"Program Ideation using model: {model.name} ({model.provider})")
+            
+    #         return model
+    #     except Exception as e:
+    #         logger.error(f"Error getting default model: {str(e)}")
+    #         # Return a mock model for emergency fallback
+    #         from types import SimpleNamespace
+    #         return SimpleNamespace(provider='Mock', model_id='mock-model')
+
+    # Add this to your program_ideation/services.py - Replace the _get_default_model method
+    def _get_default_model(self):
+        """Get the default LLM model with smart fallback logic."""
+        from askme.models import LLMModel
+        from django.utils import timezone
+        import random
+        
         try:
-            # First try to get an active DeepSeek model specifically
-            model = LLMModel.objects.filter(is_active=True, provider__iexact='deepseek').first()
+            # Try to get models in order of preference with timeout considerations
+            model_preferences = [
+                {'provider': 'openai', 'reliable': True},     # Most reliable
+                {'provider': 'deepseek', 'reliable': False},  # Can be slow/unreliable
+                {'provider': 'anthropic', 'reliable': True},  # Very reliable if available
+            ]
             
-            if not model:
-                # Then try OpenAI as fallback
-                model = LLMModel.objects.filter(is_active=True, provider__iexact='OpenAI').first()
+            for preference in model_preferences:
+                model = LLMModel.objects.filter(
+                    is_active=True, 
+                    provider__iexact=preference['provider']
+                ).first()
                 
-            if not model:
-                # Fall back to any active model
-                model = LLMModel.objects.filter(is_active=True).first()
-                
-            if not model:
-                # If no active models, get any model
-                model = LLMModel.objects.first()
+                if model:
+                    # If it's DeepSeek, add a warning log
+                    if preference['provider'].lower() == 'deepseek':
+                        logger.warning(f"Using DeepSeek model - may have timeout issues: {model.name}")
+                    else:
+                        logger.info(f"Using reliable model: {model.name} ({model.provider})")
+                    return model
             
-            # Log which model we're using (helpful for debugging)
+            # Fall back to any active model
+            model = LLMModel.objects.filter(is_active=True).first()
             if model:
-                logger.info(f"Program Ideation using model: {model.name} ({model.provider})")
+                logger.info(f"Fallback to available model: {model.name} ({model.provider})")
+                return model
+                
+            # Final fallback to any model
+            model = LLMModel.objects.first()
+            if model:
+                logger.warning(f"Last resort model: {model.name} ({model.provider})")
+                return model
             
-            return model
+            # Emergency mock model
+            logger.error("No LLM models found - using mock model")
+            from types import SimpleNamespace
+            return SimpleNamespace(provider='Mock', model_id='mock-model', name='Emergency Mock Model')
+            
         except Exception as e:
             logger.error(f"Error getting default model: {str(e)}")
-            # Return a mock model for emergency fallback
             from types import SimpleNamespace
-            return SimpleNamespace(provider='Mock', model_id='mock-model')
+            return SimpleNamespace(provider='Mock', model_id='mock-model', name='Error Fallback Mock Model')
     
     def _get_error_message(self):
         """Get error message based on language."""
