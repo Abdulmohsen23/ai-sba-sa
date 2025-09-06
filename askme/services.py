@@ -228,8 +228,10 @@ class LLMService:
 
     # Replace your _generate_openai method with maximum timeout settings:
 
+    # Update your _generate_openai method in askme/services.py:
+
     def _generate_openai(self, model_id, messages):
-        """Generate response using OpenAI with maximum possible timeouts."""
+        """Generate response using OpenAI with increased token limits for GPT-5."""
         try:
             import requests
             import json
@@ -250,14 +252,14 @@ class LLMService:
             
             # Configure parameters based on model type
             if model_id.startswith('gpt-5'):
-                data["max_completion_tokens"] = 2000  # More tokens for longer responses
+                data["max_completion_tokens"] = 4000  # Much higher for GPT-5 complex responses
                 timeout_seconds = None  # No timeout on requests call
-                logger.info(f"OpenAI API call starting for GPT-5 model: {model_id} (UNLIMITED timeout)")
+                logger.info(f"OpenAI API call starting for GPT-5 model: {model_id} (UNLIMITED timeout, 4000 tokens)")
             else:
-                data["max_tokens"] = 2000  # More tokens for longer responses
+                data["max_tokens"] = 2000  # Standard for GPT-4
                 data["temperature"] = 0.7
                 timeout_seconds = None  # No timeout on requests call
-                logger.info(f"OpenAI API call starting for model: {model_id} (UNLIMITED timeout)")
+                logger.info(f"OpenAI API call starting for model: {model_id} (UNLIMITED timeout, 2000 tokens)")
             
             logger.info(f"Making request with NO TIMEOUT...")
             logger.info(f"Request data: {json.dumps(data, indent=2)}")
@@ -293,16 +295,29 @@ class LLMService:
             # Extract the actual response content
             try:
                 response_content = response_data["choices"][0]["message"]["content"]
+                finish_reason = response_data["choices"][0].get("finish_reason", "unknown")
                 
                 logger.info(f"Response content extracted successfully")
                 logger.info(f"Response length: {len(response_content) if response_content else 0} characters")
+                logger.info(f"Finish reason: {finish_reason}")
                 logger.info(f"Response preview: {response_content[:200] if response_content else 'EMPTY'}...")
                 
+                # Handle different finish reasons
                 if not response_content:
-                    logger.error(f"{model_id} returned empty content")
-                    finish_reason = response_data["choices"][0].get("finish_reason", "unknown")
-                    logger.info(f"Finish reason: {finish_reason}")
-                    return f"[{model_id} Empty Response] Model completed but returned no content (reason: {finish_reason})"
+                    if finish_reason == "length":
+                        logger.error(f"{model_id} hit token limit - response was cut off")
+                        return f"[{model_id} Token Limit] Response was cut off due to length limit. The prompt may be too complex. Try a shorter request or increase token limit."
+                    elif finish_reason == "content_filter":
+                        logger.error(f"{model_id} content filtered")
+                        return f"[{model_id} Content Filter] The model refused to respond due to content policy. Try rephrasing your request."
+                    else:
+                        logger.error(f"{model_id} returned empty content, reason: {finish_reason}")
+                        return f"[{model_id} Empty Response] Model completed but returned no content (reason: {finish_reason})"
+                
+                # Check if response was cut off due to length
+                if finish_reason == "length":
+                    logger.warning(f"{model_id} response may be incomplete due to token limit")
+                    response_content += f"\n\n[Note: Response may be incomplete due to token limit. Consider breaking this into smaller requests.]"
                 
                 return response_content
                 
