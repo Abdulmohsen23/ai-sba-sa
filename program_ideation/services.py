@@ -582,101 +582,78 @@ Use the exact formatting as shown, keeping the heading marked with five equals s
 
     # Replace your _get_default_model method in program_ideation/services.py with this debug version:
 
-    # Update your _generate_openai method to debug the response content:
-
-    def _generate_openai(self, model_id, messages):
-        """Generate response using OpenAI with response content debugging."""
+    def _get_default_model(self):
+        """Get the default LLM model with debugging."""
+        from askme.models import LLMModel
+        
         try:
-            import requests
-            import json
+            # Debug: Log all available models
+            all_models = LLMModel.objects.all()
+            active_models = LLMModel.objects.filter(is_active=True)
             
-            api_key = settings.OPENAI_API_KEY
+            logger.info(f"DEBUG Program Ideation: Total models in database: {all_models.count()}")
+            logger.info(f"DEBUG Program Ideation: Active models: {active_models.count()}")
             
-            # Prepare headers with authentication
-            headers = {
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            }
+            for model in active_models:
+                logger.info(f"DEBUG Program Ideation: Available active model: {model.name} ({model.provider}/{model.model_id})")
             
-            # Prepare request payload with model-specific parameters
-            data = {
-                "model": model_id,
-                "messages": messages
-            }
+            # Try to get models in priority order
+            model_preferences = [
+                {'provider': 'openai', 'model_prefix': 'gpt-5', 'name': 'GPT-5'},
+                {'provider': 'openai', 'model_prefix': 'gpt-4', 'name': 'GPT-4'},
+                {'provider': 'openai', 'name': 'Any OpenAI'},
+                {'provider': 'deepseek', 'name': 'DeepSeek'},
+            ]
             
-            # Configure parameters based on model type
-            if model_id.startswith('gpt-5'):
-                # GPT-5 has strict parameter requirements
-                data["max_completion_tokens"] = 1000
-                # Don't set temperature for GPT-5 - use default
-                logger.info(f"OpenAI API call starting for GPT-5 model: {model_id} (using default parameters)")
-            else:
-                # GPT-4 and older models support more parameters
-                data["max_tokens"] = 1000
-                data["temperature"] = 0.7
-                logger.info(f"OpenAI API call starting for model: {model_id}")
+            for preference in model_preferences:
+                logger.info(f"DEBUG Program Ideation: Trying preference: {preference['name']}")
+                
+                filters = {'is_active': True, 'provider__iexact': preference['provider']}
+                
+                # If there's a model prefix, prioritize those models
+                if 'model_prefix' in preference:
+                    models = LLMModel.objects.filter(
+                        **filters,
+                        model_id__startswith=preference['model_prefix']
+                    ).order_by('name')
+                    
+                    if models.exists():
+                        model = models.first()
+                        logger.info(f"DEBUG Program Ideation: ✅ Selected model: {model.name} ({model.provider}/{model.model_id})")
+                        return model
+                    else:
+                        logger.info(f"DEBUG Program Ideation: ❌ No models found for prefix: {preference['model_prefix']}")
+                
+                # Fall back to any model from this provider
+                model = LLMModel.objects.filter(**filters).first()
+                if model:
+                    logger.info(f"DEBUG Program Ideation: ✅ Selected fallback model: {model.name} ({model.provider}/{model.model_id})")
+                    return model
+                else:
+                    logger.info(f"DEBUG Program Ideation: ❌ No active models for provider: {preference['provider']}")
             
-            logger.info(f"Request data: {json.dumps(data, indent=2)}")
+            # Final fallbacks
+            model = LLMModel.objects.filter(is_active=True).first()
+            if model:
+                logger.info(f"DEBUG Program Ideation: ⚠️ Using any active model: {model.name} ({model.provider})")
+                return model
+                
+            model = LLMModel.objects.first()
+            if model:
+                logger.warning(f"DEBUG Program Ideation: ⚠️ Using inactive model: {model.name} ({model.provider})")
+                return model
             
-            # Make API request with timeout
-            response = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers=headers,
-                data=json.dumps(data),
-                timeout=60
-            )
-            
-            logger.info(f"OpenAI API call completed with status: {response.status_code}")
-            
-            # Check for errors
-            if response.status_code != 200:
-                error_text = response.text
-                logger.error(f"OpenAI API error: {response.status_code} - {error_text}")
-                return f"[OpenAI API Error {response.status_code}] Check logs for details"
-            
-            # Parse response
-            response_data = response.json()
-            
-            if 'choices' not in response_data or not response_data['choices']:
-                logger.error(f"OpenAI API returned invalid response: {response_data}")
-                return f"[OpenAI Invalid Response] Mock response for {len(messages)} messages"
-            
-            # Extract the actual response content
-            response_content = response_data["choices"][0]["message"]["content"]
-            
-            # DEBUG: Log response details
-            logger.info(f"DEBUG Response received from {model_id}:")
-            logger.info(f"DEBUG Response length: {len(response_content) if response_content else 0} characters")
-            logger.info(f"DEBUG Response type: {type(response_content)}")
-            logger.info(f"DEBUG Response is empty: {not response_content}")
-            logger.info(f"DEBUG Response preview (first 200 chars): {response_content[:200] if response_content else 'NO CONTENT'}")
-            
-            if not response_content:
-                logger.error(f"DEBUG: {model_id} returned empty response!")
-                return f"[{model_id} Empty Response] The model returned no content"
-            
-            logger.info("OpenAI API call successful - response received and validated")
-            return response_content
-        
-        except requests.exceptions.Timeout:
-            logger.warning("OpenAI API timeout (60s) - using mock response")
-            return f"[OpenAI Timeout] This is a mock response for your Program Ideation request. OpenAI API took too long to respond."
-        
-        except requests.exceptions.ConnectionError:
-            logger.warning("OpenAI API connection error - using mock response")
-            return f"[OpenAI Connection Error] Mock response for {len(messages)} messages"
-            
-        except requests.exceptions.RequestException as e:
-            logger.error(f"OpenAI API request error: {str(e)}")
-            return f"[OpenAI Request Error] Mock response for {len(messages)} messages"
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"OpenAI API JSON decode error: {str(e)}")
-            return f"[OpenAI JSON Error] Mock response for {len(messages)} messages"
+            # Emergency mock model
+            logger.error("DEBUG Program Ideation: 🚨 No models found - using mock model")
+            from types import SimpleNamespace
+            return SimpleNamespace(provider='Mock', model_id='mock-model', name='Emergency Mock Model')
             
         except Exception as e:
-            logger.error(f"OpenAI API unexpected error: {str(e)}")
-            return f"[OpenAI Unexpected Error] Mock response for {len(messages)} messages"
+            logger.error(f"DEBUG Program Ideation: 🚨 Error getting default model: {str(e)}")
+            import traceback
+            logger.error(f"DEBUG Program Ideation: Full traceback: {traceback.format_exc()}")
+            from types import SimpleNamespace
+            return SimpleNamespace(provider='Mock', model_id='mock-model', name='Error Fallback Mock Model')
     
     def _get_error_message(self):
         """Get error message based on language."""

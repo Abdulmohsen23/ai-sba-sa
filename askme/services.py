@@ -220,8 +220,10 @@ class LLMService:
 
     # Replace your _generate_openai method with this GPT-5 compatible version:
 
+    # Update your _generate_openai method to debug the response content:
+
     def _generate_openai(self, model_id, messages):
-        """Generate response using OpenAI with model-specific parameters."""
+        """Generate response using OpenAI with response content debugging."""
         try:
             import requests
             import json
@@ -277,8 +279,22 @@ class LLMService:
                 logger.error(f"OpenAI API returned invalid response: {response_data}")
                 return f"[OpenAI Invalid Response] Mock response for {len(messages)} messages"
             
-            logger.info("OpenAI API call successful - response received")
-            return response_data["choices"][0]["message"]["content"]
+            # Extract the actual response content
+            response_content = response_data["choices"][0]["message"]["content"]
+            
+            # DEBUG: Log response details
+            logger.info(f"DEBUG Response received from {model_id}:")
+            logger.info(f"DEBUG Response length: {len(response_content) if response_content else 0} characters")
+            logger.info(f"DEBUG Response type: {type(response_content)}")
+            logger.info(f"DEBUG Response is empty: {not response_content}")
+            logger.info(f"DEBUG Response preview (first 200 chars): {response_content[:200] if response_content else 'NO CONTENT'}")
+            
+            if not response_content:
+                logger.error(f"DEBUG: {model_id} returned empty response!")
+                return f"[{model_id} Empty Response] The model returned no content"
+            
+            logger.info("OpenAI API call successful - response received and validated")
+            return response_content
         
         except requests.exceptions.Timeout:
             logger.warning("OpenAI API timeout (60s) - using mock response")
