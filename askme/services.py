@@ -222,8 +222,10 @@ class LLMService:
 
     # Update your _generate_openai method to debug the response content:
 
+    # Replace your _generate_openai method with this enhanced version:
+
     def _generate_openai(self, model_id, messages):
-        """Generate response using OpenAI with response content debugging."""
+        """Generate response using OpenAI with enhanced error handling."""
         try:
             import requests
             import json
@@ -246,23 +248,39 @@ class LLMService:
             if model_id.startswith('gpt-5'):
                 # GPT-5 has strict parameter requirements
                 data["max_completion_tokens"] = 1000
-                # Don't set temperature for GPT-5 - use default
-                logger.info(f"OpenAI API call starting for GPT-5 model: {model_id} (using default parameters)")
+                timeout_seconds = 120  # Longer timeout for GPT-5
+                logger.info(f"OpenAI API call starting for GPT-5 model: {model_id} (using default parameters, {timeout_seconds}s timeout)")
             else:
                 # GPT-4 and older models support more parameters
                 data["max_tokens"] = 1000
                 data["temperature"] = 0.7
-                logger.info(f"OpenAI API call starting for model: {model_id}")
+                timeout_seconds = 60  # Normal timeout for other models
+                logger.info(f"OpenAI API call starting for model: {model_id} ({timeout_seconds}s timeout)")
             
             logger.info(f"Request data: {json.dumps(data, indent=2)}")
+            logger.info(f"About to make POST request with {timeout_seconds}s timeout...")
             
-            # Make API request with timeout
-            response = requests.post(
-                "https://api.openai.com/v1/chat/completions",
-                headers=headers,
-                data=json.dumps(data),
-                timeout=60
-            )
+            # Make API request with enhanced timeout handling
+            try:
+                response = requests.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers=headers,
+                    data=json.dumps(data),
+                    timeout=timeout_seconds
+                )
+                logger.info(f"POST request completed. Status: {response.status_code}")
+                
+            except requests.exceptions.Timeout:
+                logger.error(f"API request timed out after {timeout_seconds} seconds")
+                return f"[{model_id} Timeout] API call exceeded {timeout_seconds} seconds"
+                
+            except requests.exceptions.ConnectionError as e:
+                logger.error(f"Connection error during API call: {str(e)}")
+                return f"[{model_id} Connection Error] Could not connect to OpenAI API"
+                
+            except Exception as e:
+                logger.error(f"Unexpected error during API request: {str(e)}")
+                return f"[{model_id} Request Error] {str(e)}"
             
             logger.info(f"OpenAI API call completed with status: {response.status_code}")
             
@@ -270,52 +288,44 @@ class LLMService:
             if response.status_code != 200:
                 error_text = response.text
                 logger.error(f"OpenAI API error: {response.status_code} - {error_text}")
-                return f"[OpenAI API Error {response.status_code}] Check logs for details"
+                return f"[OpenAI API Error {response.status_code}] {error_text[:100]}..."
             
             # Parse response
-            response_data = response.json()
+            try:
+                response_data = response.json()
+                logger.info("Successfully parsed JSON response")
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON response: {str(e)}")
+                logger.error(f"Raw response: {response.text[:500]}")
+                return f"[{model_id} JSON Error] Invalid response format"
             
             if 'choices' not in response_data or not response_data['choices']:
-                logger.error(f"OpenAI API returned invalid response: {response_data}")
-                return f"[OpenAI Invalid Response] Mock response for {len(messages)} messages"
+                logger.error(f"Invalid response structure: {response_data}")
+                return f"[{model_id} Invalid Response] No choices in response"
             
             # Extract the actual response content
-            response_content = response_data["choices"][0]["message"]["content"]
-            
-            # DEBUG: Log response details
-            logger.info(f"DEBUG Response received from {model_id}:")
-            logger.info(f"DEBUG Response length: {len(response_content) if response_content else 0} characters")
-            logger.info(f"DEBUG Response type: {type(response_content)}")
-            logger.info(f"DEBUG Response is empty: {not response_content}")
-            logger.info(f"DEBUG Response preview (first 200 chars): {response_content[:200] if response_content else 'NO CONTENT'}")
-            
-            if not response_content:
-                logger.error(f"DEBUG: {model_id} returned empty response!")
-                return f"[{model_id} Empty Response] The model returned no content"
-            
-            logger.info("OpenAI API call successful - response received and validated")
-            return response_content
+            try:
+                response_content = response_data["choices"][0]["message"]["content"]
+                logger.info(f"Response content extracted successfully")
+                logger.info(f"Response length: {len(response_content) if response_content else 0} characters")
+                logger.info(f"Response preview: {response_content[:100] if response_content else 'EMPTY'}...")
+                
+                if not response_content:
+                    logger.error(f"{model_id} returned empty content")
+                    return f"[{model_id} Empty Response] The model returned no content"
+                
+                return response_content
+                
+            except (KeyError, IndexError) as e:
+                logger.error(f"Error extracting response content: {str(e)}")
+                logger.error(f"Response structure: {response_data}")
+                return f"[{model_id} Extraction Error] Could not extract response content"
         
-        except requests.exceptions.Timeout:
-            logger.warning("OpenAI API timeout (60s) - using mock response")
-            return f"[OpenAI Timeout] This is a mock response for your Program Ideation request. OpenAI API took too long to respond."
-        
-        except requests.exceptions.ConnectionError:
-            logger.warning("OpenAI API connection error - using mock response")
-            return f"[OpenAI Connection Error] Mock response for {len(messages)} messages"
-            
-        except requests.exceptions.RequestException as e:
-            logger.error(f"OpenAI API request error: {str(e)}")
-            return f"[OpenAI Request Error] Mock response for {len(messages)} messages"
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"OpenAI API JSON decode error: {str(e)}")
-            return f"[OpenAI JSON Error] Mock response for {len(messages)} messages"
-            
         except Exception as e:
-            logger.error(f"OpenAI API unexpected error: {str(e)}")
-            return f"[OpenAI Unexpected Error] Mock response for {len(messages)} messages"
-
+            logger.error(f"Unexpected error in _generate_openai: {str(e)}")
+            import traceback
+            logger.error(f"Full traceback: {traceback.format_exc()}")
+            return f"[{model_id} Unexpected Error] {str(e)}"
     # Step 1: Update your askme/services.py - Enhanced OpenAI method with GPT-5 support
 
     # def _generate_openai(self, model_id, messages):
