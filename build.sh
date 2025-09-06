@@ -15,12 +15,16 @@ pip install --timeout=1000 --no-cache-dir -r requirements.txt
 
 # Set Django settings for build
 export DJANGO_SETTINGS_MODULE=config.settings.production
+export BUILD_PHASE=true
 
-# Run database migrations (if needed)
-echo "🗄️ Running database migrations..."
-python manage.py migrate --noinput --settings=config.settings.production
+# Debug: Print environment variables
+echo "BUILD_PHASE: $BUILD_PHASE"
+echo "DJANGO_SETTINGS_MODULE: $DJANGO_SETTINGS_MODULE"
 
-# Collect static files
+# SKIP database migrations during build (will run at startup)
+echo "⏭️ Skipping database migrations during build phase..."
+
+# Collect static files (this doesn't need database)
 echo "🎨 Collecting static files..."
 python manage.py collectstatic --noinput --settings=config.settings.production
 
