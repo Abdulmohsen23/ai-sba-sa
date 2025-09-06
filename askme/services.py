@@ -138,29 +138,75 @@ class LLMService:
 
     # Replace your _generate_openai method in askme/services.py with this:
 
+    # Replace your _generate_openai method in askme/services.py with this:
+
     def _generate_openai(self, model_id, messages):
-        """Generate response using OpenAI."""
+        """Generate response using OpenAI with direct HTTP API (same approach as DeepSeek)."""
         try:
-            import openai
+            import requests
+            import json
             
-            # Use OpenAI() instead of Client() - this is the correct class name
-            client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+            api_key = settings.OPENAI_API_KEY
             
-            response = client.chat.completions.create(
-                model=model_id,
-                messages=messages,
-                max_tokens=1000,
-                temperature=0.7
+            # Prepare headers with authentication
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            # Prepare request payload
+            data = {
+                "model": model_id,
+                "messages": messages,
+                "max_tokens": 1000,
+                "temperature": 0.7
+            }
+            
+            logger.info(f"OpenAI API call starting for model: {model_id}")
+            
+            # Make API request with timeout (same approach as DeepSeek)
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                data=json.dumps(data),
+                timeout=60  # 60-second timeout for OpenAI
             )
             
-            return response.choices[0].message.content
+            logger.info(f"OpenAI API call completed with status: {response.status_code}")
             
-        except ImportError:
-            logger.warning("OpenAI SDK not installed. Using mock response.")
-            return f"[Mock OpenAI Response] Would respond to conversation with {len(messages)} messages"
+            # Check for errors
+            if response.status_code != 200:
+                logger.error(f"OpenAI API error: {response.status_code} - {response.text}")
+                return f"[OpenAI API Error {response.status_code}] Mock response for {len(messages)} messages"
+            
+            # Parse response
+            response_data = response.json()
+            
+            if 'choices' not in response_data or not response_data['choices']:
+                logger.error(f"OpenAI API returned invalid response: {response_data}")
+                return f"[OpenAI Invalid Response] Mock response for {len(messages)} messages"
+                
+            return response_data["choices"][0]["message"]["content"]
+        
+        except requests.exceptions.Timeout:
+            logger.warning("OpenAI API timeout (60s) - using mock response")
+            return f"[OpenAI Timeout] This is a mock response for your Program Ideation request. OpenAI API took too long to respond."
+        
+        except requests.exceptions.ConnectionError:
+            logger.warning("OpenAI API connection error - using mock response")
+            return f"[OpenAI Connection Error] Mock response for {len(messages)} messages"
+            
+        except requests.exceptions.RequestException as e:
+            logger.error(f"OpenAI API request error: {str(e)}")
+            return f"[OpenAI Request Error] Mock response for {len(messages)} messages"
+            
+        except json.JSONDecodeError as e:
+            logger.error(f"OpenAI API JSON decode error: {str(e)}")
+            return f"[OpenAI JSON Error] Mock response for {len(messages)} messages"
+            
         except Exception as e:
-            logger.error(f"Error with OpenAI API: {str(e)}")
-            return f"[OpenAI Error] {str(e)} - Using mock response"
+            logger.error(f"OpenAI API unexpected error: {str(e)}")
+            return f"[OpenAI Unexpected Error] Mock response for {len(messages)} messages"
 
     # Step 1: Update your askme/services.py - Enhanced OpenAI method with GPT-5 support
 
