@@ -22,6 +22,7 @@ urlpatterns = [
     path('askme/', include('askme.urls', namespace='askme')),
     path('program-ideation/', include('program_ideation.urls', namespace='program_ideation')),
     path('', include('tool_registry.urls')),
+    path('register-ai/', lambda r: __import__('core.views', fromlist=['register_models_and_tools']).register_models_and_tools(r)),
 ]
 
 # For now, NEVER include transcription and translation to avoid build errors
