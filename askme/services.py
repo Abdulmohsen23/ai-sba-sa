@@ -218,8 +218,10 @@ class LLMService:
 
     # Replace your _generate_openai method with this corrected version:
 
+    # Replace your _generate_openai method with this GPT-5 compatible version:
+
     def _generate_openai(self, model_id, messages):
-        """Generate response using OpenAI with correct parameters for each model."""
+        """Generate response using OpenAI with model-specific parameters."""
         try:
             import requests
             import json
@@ -235,19 +237,22 @@ class LLMService:
             # Prepare request payload with model-specific parameters
             data = {
                 "model": model_id,
-                "messages": messages,
-                "temperature": 0.7
+                "messages": messages
             }
             
-            # Use correct token parameter based on model
+            # Configure parameters based on model type
             if model_id.startswith('gpt-5'):
-                # GPT-5 uses max_completion_tokens
+                # GPT-5 has strict parameter requirements
                 data["max_completion_tokens"] = 1000
-                logger.info(f"OpenAI API call starting for GPT-5 model: {model_id}")
+                # Don't set temperature for GPT-5 - use default
+                logger.info(f"OpenAI API call starting for GPT-5 model: {model_id} (using default parameters)")
             else:
-                # GPT-4 and older models use max_tokens
+                # GPT-4 and older models support more parameters
                 data["max_tokens"] = 1000
+                data["temperature"] = 0.7
                 logger.info(f"OpenAI API call starting for model: {model_id}")
+            
+            logger.info(f"Request data: {json.dumps(data, indent=2)}")
             
             # Make API request with timeout
             response = requests.post(
@@ -271,7 +276,8 @@ class LLMService:
             if 'choices' not in response_data or not response_data['choices']:
                 logger.error(f"OpenAI API returned invalid response: {response_data}")
                 return f"[OpenAI Invalid Response] Mock response for {len(messages)} messages"
-                
+            
+            logger.info("OpenAI API call successful - response received")
             return response_data["choices"][0]["message"]["content"]
         
         except requests.exceptions.Timeout:
