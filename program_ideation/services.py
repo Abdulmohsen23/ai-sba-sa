@@ -579,42 +579,53 @@ Use the exact formatting as shown, keeping the heading marked with five equals s
     #         from types import SimpleNamespace
     #         return SimpleNamespace(provider='Mock', model_id='mock-model')
 
-    # Add this to your program_ideation/services.py - Replace the _get_default_model method
+    # Update your program_ideation/services.py - Enhanced _get_default_model method
+
     def _get_default_model(self):
-        """Get the default LLM model with smart fallback logic."""
+        """Get the default LLM model with GPT-5 as priority."""
         from askme.models import LLMModel
         from django.utils import timezone
-        import random
         
         try:
-            # Try to get models in order of preference with timeout considerations
+            # Updated model preferences with GPT-5 as top priority
             model_preferences = [
-                {'provider': 'openai', 'reliable': True},     # Most reliable
-                {'provider': 'deepseek', 'reliable': False},  # Can be slow/unreliable
-                {'provider': 'anthropic', 'reliable': True},  # Very reliable if available
+                {'provider': 'openai', 'model_prefix': 'gpt-5', 'reliable': True, 'priority': 2},      # GPT-5 family
+                {'provider': 'openai', 'model_prefix': 'gpt-4', 'reliable': True, 'priority': 3},      # GPT-4 family fallback
+                {'provider': 'anthropic', 'reliable': True, 'priority': 4},                            # Claude fallback
+                {'provider': 'deepseek', 'reliable': False, 'priority': 1},                           # DeepSeek (slow)
             ]
             
             for preference in model_preferences:
-                model = LLMModel.objects.filter(
-                    is_active=True, 
-                    provider__iexact=preference['provider']
-                ).first()
+                # Build query filters
+                filters = {'is_active': True, 'provider__iexact': preference['provider']}
                 
+                # If there's a model prefix (like gpt-5), prioritize those models
+                if 'model_prefix' in preference:
+                    models = LLMModel.objects.filter(
+                        **filters,
+                        model_id__startswith=preference['model_prefix']
+                    ).order_by('name')
+                    
+                    if models.exists():
+                        model = models.first()
+                        logger.info(f"Using preferred model: {model.name} ({model.provider}/{model.model_id})")
+                        return model
+                
+                # Fall back to any model from this provider
+                model = LLMModel.objects.filter(**filters).first()
                 if model:
-                    # If it's DeepSeek, add a warning log
-                    if preference['provider'].lower() == 'deepseek':
-                        logger.warning(f"Using DeepSeek model - may have timeout issues: {model.name}")
-                    else:
+                    if preference.get('reliable', True):
                         logger.info(f"Using reliable model: {model.name} ({model.provider})")
+                    else:
+                        logger.warning(f"Using less reliable model: {model.name} ({model.provider}) - may have timeout issues")
                     return model
             
-            # Fall back to any active model
+            # Final fallbacks
             model = LLMModel.objects.filter(is_active=True).first()
             if model:
                 logger.info(f"Fallback to available model: {model.name} ({model.provider})")
                 return model
                 
-            # Final fallback to any model
             model = LLMModel.objects.first()
             if model:
                 logger.warning(f"Last resort model: {model.name} ({model.provider})")
