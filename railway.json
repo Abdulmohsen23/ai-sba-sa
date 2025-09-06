@@ -5,7 +5,7 @@
     "buildCommand": "chmod +x build.sh && ./build.sh"
   },
   "deploy": {
-    "startCommand": "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT",
+    "startCommand": "python manage.py migrate --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --timeout 600 --keep-alive 300 --max-requests 50 --worker-class sync --workers 2 --worker-connections 1000 --graceful-timeout 600 --log-level info --access-logfile - --error-logfile -",
     "healthcheckPath": "/",
     "healthcheckTimeout": 300,
     "restartPolicyType": "on_failure",
