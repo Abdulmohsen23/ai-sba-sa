@@ -1,1 +1,1 @@
-web: python manage.py migrate --noinput && gunicorn config.wsgi:application --log-file -
+web: python manage.py migrate --noinput && gunicorn config.wsgi:application --timeout 120 --log-file -
