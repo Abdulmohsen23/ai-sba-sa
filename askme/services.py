@@ -224,8 +224,10 @@ class LLMService:
 
     # Replace your _generate_openai method with this enhanced version:
 
+    # Replace your _generate_openai method with extended timeouts:
+
     def _generate_openai(self, model_id, messages):
-        """Generate response using OpenAI with enhanced error handling."""
+        """Generate response using OpenAI with extended timeouts."""
         try:
             import requests
             import json
@@ -248,31 +250,31 @@ class LLMService:
             if model_id.startswith('gpt-5'):
                 # GPT-5 has strict parameter requirements
                 data["max_completion_tokens"] = 1000
-                timeout_seconds = 120  # Longer timeout for GPT-5
+                timeout_seconds = 300  # 5 minutes for GPT-5
                 logger.info(f"OpenAI API call starting for GPT-5 model: {model_id} (using default parameters, {timeout_seconds}s timeout)")
             else:
                 # GPT-4 and older models support more parameters
                 data["max_tokens"] = 1000
                 data["temperature"] = 0.7
-                timeout_seconds = 60  # Normal timeout for other models
+                timeout_seconds = 180  # 3 minutes for other models
                 logger.info(f"OpenAI API call starting for model: {model_id} ({timeout_seconds}s timeout)")
             
             logger.info(f"Request data: {json.dumps(data, indent=2)}")
             logger.info(f"About to make POST request with {timeout_seconds}s timeout...")
             
-            # Make API request with enhanced timeout handling
+            # Make API request with very long timeout
             try:
                 response = requests.post(
                     "https://api.openai.com/v1/chat/completions",
                     headers=headers,
                     data=json.dumps(data),
-                    timeout=timeout_seconds
+                    timeout=timeout_seconds  # Very long timeout
                 )
                 logger.info(f"POST request completed. Status: {response.status_code}")
                 
             except requests.exceptions.Timeout:
                 logger.error(f"API request timed out after {timeout_seconds} seconds")
-                return f"[{model_id} Timeout] API call exceeded {timeout_seconds} seconds"
+                return f"[{model_id} Timeout] API call exceeded {timeout_seconds} seconds - try again"
                 
             except requests.exceptions.ConnectionError as e:
                 logger.error(f"Connection error during API call: {str(e)}")
@@ -310,8 +312,23 @@ class LLMService:
                 logger.info(f"Response length: {len(response_content) if response_content else 0} characters")
                 logger.info(f"Response preview: {response_content[:100] if response_content else 'EMPTY'}...")
                 
+                # Handle empty response issue for GPT-5
                 if not response_content:
                     logger.error(f"{model_id} returned empty content")
+                    
+                    # For GPT-5, try to get more info about why it's empty
+                    if model_id.startswith('gpt-5'):
+                        logger.info("Checking GPT-5 response for finish_reason...")
+                        finish_reason = response_data["choices"][0].get("finish_reason", "unknown")
+                        logger.info(f"GPT-5 finish_reason: {finish_reason}")
+                        
+                        if finish_reason == "content_filter":
+                            return f"[GPT-5 Content Filter] The model refused to respond due to content policy"
+                        elif finish_reason == "length":
+                            return f"[GPT-5 Length Limit] Response was cut off due to length limit"
+                        else:
+                            return f"[GPT-5 Empty Response] Model completed but returned no content (reason: {finish_reason})"
+                    
                     return f"[{model_id} Empty Response] The model returned no content"
                 
                 return response_content
@@ -326,6 +343,7 @@ class LLMService:
             import traceback
             logger.error(f"Full traceback: {traceback.format_exc()}")
             return f"[{model_id} Unexpected Error] {str(e)}"
+    
     # Step 1: Update your askme/services.py - Enhanced OpenAI method with GPT-5 support
 
     # def _generate_openai(self, model_id, messages):
