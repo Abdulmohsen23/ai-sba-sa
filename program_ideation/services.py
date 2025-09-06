@@ -547,99 +547,113 @@ Use the exact formatting as shown, keeping the heading marked with five equals s
             logger.error(f"Exception in process_idea_note: {str(e)}")
             return self._get_error_message()
     
-    def _get_default_model(self):
-        """Get the default LLM model to use."""
-        from askme.models import LLMModel
-        
-        # Try to get a model that's meant for this type of creative work
-        try:
-            # First try to get an active DeepSeek model specifically
-            model = LLMModel.objects.filter(is_active=True, provider__iexact='OpenAI').first()
-            
-            if not model:
-                # Then try OpenAI as fallback 
-                model = LLMModel.objects.filter(is_active=True, provider__iexact='deepseek').first()
-                
-            if not model:
-                # Fall back to any active model
-                model = LLMModel.objects.filter(is_active=True).first()
-                
-            if not model:
-                # If no active models, get any model
-                model = LLMModel.objects.first()
-            
-            # Log which model we're using (helpful for debugging)
-            if model:
-                logger.info(f"Program Ideation using model: {model.name} ({model.provider})")
-            
-            return model
-        except Exception as e:
-            logger.error(f"Error getting default model: {str(e)}")
-            # Return a mock model for emergency fallback
-            from types import SimpleNamespace
-            return SimpleNamespace(provider='Mock', model_id='mock-model')
-
-    # Update your program_ideation/services.py - Enhanced _get_default_model method
-
     # def _get_default_model(self):
-    #     """Get the default LLM model with GPT-5 as priority."""
+    #     """Get the default LLM model to use."""
     #     from askme.models import LLMModel
-    #     from django.utils import timezone
         
+    #     # Try to get a model that's meant for this type of creative work
     #     try:
-    #         # Updated model preferences with GPT-5 as top priority
-    #         model_preferences = [
-    #             {'provider': 'openai', 'model_prefix': 'gpt-5', 'reliable': True, 'priority': 2},      # GPT-5 family
-    #             {'provider': 'openai', 'model_prefix': 'gpt-4', 'reliable': True, 'priority': 3},      # GPT-4 family fallback
-    #             {'provider': 'anthropic', 'reliable': True, 'priority': 4},                            # Claude fallback
-    #             {'provider': 'deepseek', 'reliable': False, 'priority': 1},                           # DeepSeek (slow)
-    #         ]
+    #         # First try to get an active DeepSeek model specifically
+    #         model = LLMModel.objects.filter(is_active=True, provider__iexact='OpenAI').first()
             
-    #         for preference in model_preferences:
-    #             # Build query filters
-    #             filters = {'is_active': True, 'provider__iexact': preference['provider']}
+    #         if not model:
+    #             # Then try OpenAI as fallback 
+    #             model = LLMModel.objects.filter(is_active=True, provider__iexact='deepseek').first()
                 
-    #             # If there's a model prefix (like gpt-5), prioritize those models
-    #             if 'model_prefix' in preference:
-    #                 models = LLMModel.objects.filter(
-    #                     **filters,
-    #                     model_id__startswith=preference['model_prefix']
-    #                 ).order_by('name')
-                    
-    #                 if models.exists():
-    #                     model = models.first()
-    #                     logger.info(f"Using preferred model: {model.name} ({model.provider}/{model.model_id})")
-    #                     return model
+    #         if not model:
+    #             # Fall back to any active model
+    #             model = LLMModel.objects.filter(is_active=True).first()
                 
-    #             # Fall back to any model from this provider
-    #             model = LLMModel.objects.filter(**filters).first()
-    #             if model:
-    #                 if preference.get('reliable', True):
-    #                     logger.info(f"Using reliable model: {model.name} ({model.provider})")
-    #                 else:
-    #                     logger.warning(f"Using less reliable model: {model.name} ({model.provider}) - may have timeout issues")
-    #                 return model
+    #         if not model:
+    #             # If no active models, get any model
+    #             model = LLMModel.objects.first()
             
-    #         # Final fallbacks
-    #         model = LLMModel.objects.filter(is_active=True).first()
+    #         # Log which model we're using (helpful for debugging)
     #         if model:
-    #             logger.info(f"Fallback to available model: {model.name} ({model.provider})")
-    #             return model
-                
-    #         model = LLMModel.objects.first()
-    #         if model:
-    #             logger.warning(f"Last resort model: {model.name} ({model.provider})")
-    #             return model
+    #             logger.info(f"Program Ideation using model: {model.name} ({model.provider})")
             
-    #         # Emergency mock model
-    #         logger.error("No LLM models found - using mock model")
-    #         from types import SimpleNamespace
-    #         return SimpleNamespace(provider='Mock', model_id='mock-model', name='Emergency Mock Model')
-            
+    #         return model
     #     except Exception as e:
     #         logger.error(f"Error getting default model: {str(e)}")
+    #         # Return a mock model for emergency fallback
     #         from types import SimpleNamespace
-    #         return SimpleNamespace(provider='Mock', model_id='mock-model', name='Error Fallback Mock Model')
+    #         return SimpleNamespace(provider='Mock', model_id='mock-model')
+
+
+    # Replace your _get_default_model method in program_ideation/services.py with this debug version:
+
+    def _get_default_model(self):
+        """Get the default LLM model with debugging."""
+        from askme.models import LLMModel
+        
+        try:
+            # Debug: Log all available models
+            all_models = LLMModel.objects.all()
+            active_models = LLMModel.objects.filter(is_active=True)
+            
+            logger.info(f"DEBUG Program Ideation: Total models in database: {all_models.count()}")
+            logger.info(f"DEBUG Program Ideation: Active models: {active_models.count()}")
+            
+            for model in active_models:
+                logger.info(f"DEBUG Program Ideation: Available active model: {model.name} ({model.provider}/{model.model_id})")
+            
+            # Try to get models in priority order
+            model_preferences = [
+                {'provider': 'openai', 'model_prefix': 'gpt-5', 'name': 'GPT-5'},
+                {'provider': 'openai', 'model_prefix': 'gpt-4', 'name': 'GPT-4'},
+                {'provider': 'openai', 'name': 'Any OpenAI'},
+                {'provider': 'deepseek', 'name': 'DeepSeek'},
+            ]
+            
+            for preference in model_preferences:
+                logger.info(f"DEBUG Program Ideation: Trying preference: {preference['name']}")
+                
+                filters = {'is_active': True, 'provider__iexact': preference['provider']}
+                
+                # If there's a model prefix, prioritize those models
+                if 'model_prefix' in preference:
+                    models = LLMModel.objects.filter(
+                        **filters,
+                        model_id__startswith=preference['model_prefix']
+                    ).order_by('name')
+                    
+                    if models.exists():
+                        model = models.first()
+                        logger.info(f"DEBUG Program Ideation: ✅ Selected model: {model.name} ({model.provider}/{model.model_id})")
+                        return model
+                    else:
+                        logger.info(f"DEBUG Program Ideation: ❌ No models found for prefix: {preference['model_prefix']}")
+                
+                # Fall back to any model from this provider
+                model = LLMModel.objects.filter(**filters).first()
+                if model:
+                    logger.info(f"DEBUG Program Ideation: ✅ Selected fallback model: {model.name} ({model.provider}/{model.model_id})")
+                    return model
+                else:
+                    logger.info(f"DEBUG Program Ideation: ❌ No active models for provider: {preference['provider']}")
+            
+            # Final fallbacks
+            model = LLMModel.objects.filter(is_active=True).first()
+            if model:
+                logger.info(f"DEBUG Program Ideation: ⚠️ Using any active model: {model.name} ({model.provider})")
+                return model
+                
+            model = LLMModel.objects.first()
+            if model:
+                logger.warning(f"DEBUG Program Ideation: ⚠️ Using inactive model: {model.name} ({model.provider})")
+                return model
+            
+            # Emergency mock model
+            logger.error("DEBUG Program Ideation: 🚨 No models found - using mock model")
+            from types import SimpleNamespace
+            return SimpleNamespace(provider='Mock', model_id='mock-model', name='Emergency Mock Model')
+            
+        except Exception as e:
+            logger.error(f"DEBUG Program Ideation: 🚨 Error getting default model: {str(e)}")
+            import traceback
+            logger.error(f"DEBUG Program Ideation: Full traceback: {traceback.format_exc()}")
+            from types import SimpleNamespace
+            return SimpleNamespace(provider='Mock', model_id='mock-model', name='Error Fallback Mock Model')
     
     def _get_error_message(self):
         """Get error message based on language."""
