@@ -116,25 +116,51 @@ class LLMService:
             logger.error(f"Error with Anthropic API: {str(e)}")
             raise
     
+    # def _generate_openai(self, model_id, messages):
+    #     """Generate response using OpenAI."""
+    #     try:
+    #         import openai
+    #         client = openai.Client(api_key=settings.OPENAI_API_KEY)
+            
+    #         response = client.chat.completions.create(
+    #             model=model_id,
+    #             messages=messages,
+    #             max_tokens=1000
+    #         )
+            
+    #         return response.choices[0].message.content
+    #     except ImportError:
+    #         logger.warning("OpenAI SDK not installed. Using mock response.")
+    #         return f"[Mock OpenAI Response] Would respond to conversation with {len(messages)} messages"
+    #     except Exception as e:
+    #         logger.error(f"Error with OpenAI API: {str(e)}")
+    #         raise
+
+    # Replace your _generate_openai method in askme/services.py with this:
+
     def _generate_openai(self, model_id, messages):
         """Generate response using OpenAI."""
         try:
             import openai
-            client = openai.Client(api_key=settings.OPENAI_API_KEY)
+            
+            # Use OpenAI() instead of Client() - this is the correct class name
+            client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
             
             response = client.chat.completions.create(
                 model=model_id,
                 messages=messages,
-                max_tokens=1000
+                max_tokens=1000,
+                temperature=0.7
             )
             
             return response.choices[0].message.content
+            
         except ImportError:
             logger.warning("OpenAI SDK not installed. Using mock response.")
             return f"[Mock OpenAI Response] Would respond to conversation with {len(messages)} messages"
         except Exception as e:
             logger.error(f"Error with OpenAI API: {str(e)}")
-            raise
+            return f"[OpenAI Error] {str(e)} - Using mock response"
 
     # Step 1: Update your askme/services.py - Enhanced OpenAI method with GPT-5 support
 
