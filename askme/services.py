@@ -230,8 +230,10 @@ class LLMService:
 
     # Update your _generate_openai method in askme/services.py:
 
+    # Update your _generate_openai method with maximum token limits:
+
     def _generate_openai(self, model_id, messages):
-        """Generate response using OpenAI with increased token limits for GPT-5."""
+        """Generate response using OpenAI with maximum token limits."""
         try:
             import requests
             import json
@@ -252,14 +254,14 @@ class LLMService:
             
             # Configure parameters based on model type
             if model_id.startswith('gpt-5'):
-                data["max_completion_tokens"] = 4000  # Much higher for GPT-5 complex responses
+                data["max_completion_tokens"] = 8000  # Maximum possible for GPT-5
                 timeout_seconds = None  # No timeout on requests call
-                logger.info(f"OpenAI API call starting for GPT-5 model: {model_id} (UNLIMITED timeout, 4000 tokens)")
+                logger.info(f"OpenAI API call starting for GPT-5 model: {model_id} (UNLIMITED timeout, 8000 tokens)")
             else:
-                data["max_tokens"] = 2000  # Standard for GPT-4
+                data["max_tokens"] = 4000  # High limit for GPT-4
                 data["temperature"] = 0.7
                 timeout_seconds = None  # No timeout on requests call
-                logger.info(f"OpenAI API call starting for model: {model_id} (UNLIMITED timeout, 2000 tokens)")
+                logger.info(f"OpenAI API call starting for model: {model_id} (UNLIMITED timeout, 4000 tokens)")
             
             logger.info(f"Making request with NO TIMEOUT...")
             logger.info(f"Request data: {json.dumps(data, indent=2)}")
@@ -305,8 +307,8 @@ class LLMService:
                 # Handle different finish reasons
                 if not response_content:
                     if finish_reason == "length":
-                        logger.error(f"{model_id} hit token limit - response was cut off")
-                        return f"[{model_id} Token Limit] Response was cut off due to length limit. The prompt may be too complex. Try a shorter request or increase token limit."
+                        logger.error(f"{model_id} hit maximum token limit")
+                        return f"[{model_id} Maximum Token Limit] Response requires more tokens than the model's maximum capacity. Consider breaking this into smaller, more specific requests."
                     elif finish_reason == "content_filter":
                         logger.error(f"{model_id} content filtered")
                         return f"[{model_id} Content Filter] The model refused to respond due to content policy. Try rephrasing your request."
@@ -316,8 +318,9 @@ class LLMService:
                 
                 # Check if response was cut off due to length
                 if finish_reason == "length":
-                    logger.warning(f"{model_id} response may be incomplete due to token limit")
-                    response_content += f"\n\n[Note: Response may be incomplete due to token limit. Consider breaking this into smaller requests.]"
+                    logger.warning(f"{model_id} response was cut off at maximum token limit")
+                    # Return the partial response with a note
+                    response_content += f"\n\n[Response was cut off due to token limit. To get the complete response, please ask for the remaining suggestions separately.]"
                 
                 return response_content
                 
