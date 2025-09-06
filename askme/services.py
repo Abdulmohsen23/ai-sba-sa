@@ -226,8 +226,10 @@ class LLMService:
 
     # Replace your _generate_openai method with extended timeouts:
 
+    # Replace your _generate_openai method with maximum timeout settings:
+
     def _generate_openai(self, model_id, messages):
-        """Generate response using OpenAI with extended timeouts."""
+        """Generate response using OpenAI with maximum possible timeouts."""
         try:
             import requests
             import json
@@ -240,7 +242,7 @@ class LLMService:
                 "Content-Type": "application/json"
             }
             
-            # Prepare request payload with model-specific parameters
+            # Prepare request payload
             data = {
                 "model": model_id,
                 "messages": messages
@@ -248,43 +250,27 @@ class LLMService:
             
             # Configure parameters based on model type
             if model_id.startswith('gpt-5'):
-                # GPT-5 has strict parameter requirements
-                data["max_completion_tokens"] = 1000
-                timeout_seconds = 300  # 5 minutes for GPT-5
-                logger.info(f"OpenAI API call starting for GPT-5 model: {model_id} (using default parameters, {timeout_seconds}s timeout)")
+                data["max_completion_tokens"] = 2000  # More tokens for longer responses
+                timeout_seconds = None  # No timeout on requests call
+                logger.info(f"OpenAI API call starting for GPT-5 model: {model_id} (UNLIMITED timeout)")
             else:
-                # GPT-4 and older models support more parameters
-                data["max_tokens"] = 1000
+                data["max_tokens"] = 2000  # More tokens for longer responses
                 data["temperature"] = 0.7
-                timeout_seconds = 180  # 3 minutes for other models
-                logger.info(f"OpenAI API call starting for model: {model_id} ({timeout_seconds}s timeout)")
+                timeout_seconds = None  # No timeout on requests call
+                logger.info(f"OpenAI API call starting for model: {model_id} (UNLIMITED timeout)")
             
+            logger.info(f"Making request with NO TIMEOUT...")
             logger.info(f"Request data: {json.dumps(data, indent=2)}")
-            logger.info(f"About to make POST request with {timeout_seconds}s timeout...")
             
-            # Make API request with very long timeout
-            try:
-                response = requests.post(
-                    "https://api.openai.com/v1/chat/completions",
-                    headers=headers,
-                    data=json.dumps(data),
-                    timeout=timeout_seconds  # Very long timeout
-                )
-                logger.info(f"POST request completed. Status: {response.status_code}")
-                
-            except requests.exceptions.Timeout:
-                logger.error(f"API request timed out after {timeout_seconds} seconds")
-                return f"[{model_id} Timeout] API call exceeded {timeout_seconds} seconds - try again"
-                
-            except requests.exceptions.ConnectionError as e:
-                logger.error(f"Connection error during API call: {str(e)}")
-                return f"[{model_id} Connection Error] Could not connect to OpenAI API"
-                
-            except Exception as e:
-                logger.error(f"Unexpected error during API request: {str(e)}")
-                return f"[{model_id} Request Error] {str(e)}"
+            # Make API request with NO timeout
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                data=json.dumps(data),
+                timeout=timeout_seconds  # None = no timeout
+            )
             
-            logger.info(f"OpenAI API call completed with status: {response.status_code}")
+            logger.info(f"API call completed with status: {response.status_code}")
             
             # Check for errors
             if response.status_code != 200:
@@ -298,7 +284,6 @@ class LLMService:
                 logger.info("Successfully parsed JSON response")
             except json.JSONDecodeError as e:
                 logger.error(f"Failed to parse JSON response: {str(e)}")
-                logger.error(f"Raw response: {response.text[:500]}")
                 return f"[{model_id} JSON Error] Invalid response format"
             
             if 'choices' not in response_data or not response_data['choices']:
@@ -308,34 +293,21 @@ class LLMService:
             # Extract the actual response content
             try:
                 response_content = response_data["choices"][0]["message"]["content"]
+                
                 logger.info(f"Response content extracted successfully")
                 logger.info(f"Response length: {len(response_content) if response_content else 0} characters")
-                logger.info(f"Response preview: {response_content[:100] if response_content else 'EMPTY'}...")
+                logger.info(f"Response preview: {response_content[:200] if response_content else 'EMPTY'}...")
                 
-                # Handle empty response issue for GPT-5
                 if not response_content:
                     logger.error(f"{model_id} returned empty content")
-                    
-                    # For GPT-5, try to get more info about why it's empty
-                    if model_id.startswith('gpt-5'):
-                        logger.info("Checking GPT-5 response for finish_reason...")
-                        finish_reason = response_data["choices"][0].get("finish_reason", "unknown")
-                        logger.info(f"GPT-5 finish_reason: {finish_reason}")
-                        
-                        if finish_reason == "content_filter":
-                            return f"[GPT-5 Content Filter] The model refused to respond due to content policy"
-                        elif finish_reason == "length":
-                            return f"[GPT-5 Length Limit] Response was cut off due to length limit"
-                        else:
-                            return f"[GPT-5 Empty Response] Model completed but returned no content (reason: {finish_reason})"
-                    
-                    return f"[{model_id} Empty Response] The model returned no content"
+                    finish_reason = response_data["choices"][0].get("finish_reason", "unknown")
+                    logger.info(f"Finish reason: {finish_reason}")
+                    return f"[{model_id} Empty Response] Model completed but returned no content (reason: {finish_reason})"
                 
                 return response_content
                 
             except (KeyError, IndexError) as e:
                 logger.error(f"Error extracting response content: {str(e)}")
-                logger.error(f"Response structure: {response_data}")
                 return f"[{model_id} Extraction Error] Could not extract response content"
         
         except Exception as e:
